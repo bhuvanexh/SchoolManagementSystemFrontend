@@ -1,0 +1,10 @@
+import * as yup from 'yup';
+
+import { dateRule, requiredString } from './commonRules';
+
+export const testSchema = yup.object({
+  name: requiredString('Test name'),
+  subjectId: yup.string().required('Subject is required'),
+  testDate: dateRule('test date'),
+  maxScore: yup.number().min(1).required('Maximum score is required'),
+});

@@ -1,0 +1,64 @@
+@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@200;300;400;500;600;700;800&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-surface text-on-surface font-sans antialiased;
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+}
+
+@layer components {
+  .glass-panel {
+    @apply rounded-glass border border-white/40 bg-white/70 shadow-glass backdrop-blur-glass;
+  }
+
+  .glass-panel-sm {
+    @apply rounded-glass-sm border border-white/40 bg-white/70 shadow-glass-md backdrop-blur-glass-sm;
+  }
+
+  .mesh-bg {
+    background-color: #f8f9fc;
+    background-image:
+      radial-gradient(ellipse at top left, rgba(58, 56, 139, 0.15), transparent 50%),
+      radial-gradient(ellipse at top right, rgba(0, 108, 73, 0.1), transparent 50%),
+      radial-gradient(ellipse at bottom right, rgba(58, 56, 139, 0.1), transparent 50%),
+      radial-gradient(ellipse at bottom left, rgba(111, 251, 190, 0.15), transparent 50%);
+  }
+
+  .btn-primary {
+    @apply rounded-full bg-gradient-to-r from-primary to-primary-container px-6 py-3 text-xs font-bold uppercase tracking-wider text-white shadow-primary-glow-sm transition-transform duration-200 hover:scale-105 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:scale-100;
+  }
+
+  .btn-secondary {
+    @apply rounded-full border border-outline/20 bg-surface-container px-6 py-3 text-xs font-semibold tracking-wider text-on-surface transition-all duration-200 hover:bg-surface active:scale-95 disabled:cursor-not-allowed disabled:opacity-50;
+  }
+
+  .input-field {
+    @apply w-full rounded-glass-xs bg-surface-container-low px-4 py-3 text-on-surface outline-none transition-all duration-200 placeholder:text-gray-400 focus:bg-white focus:ring-2 focus:ring-primary-light;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 4px;
+    height: 4px;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: rgba(35, 31, 116, 0.15);
+    border-radius: 9999px;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: rgba(35, 31, 116, 0.3);
+  }
+}
