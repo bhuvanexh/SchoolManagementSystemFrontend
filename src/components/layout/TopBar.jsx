@@ -1,14 +1,33 @@
 import { Bell, Menu, Search } from 'lucide-react';
-import { useState } from 'react';
-import { useSelector } from 'react-redux';
+import { useEffect, useState } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
 
 import Avatar from '../data-display/Avatar';
 import NotificationDropdown from '../../pages/notifications/components/NotificationDropdown';
+import { fetchNotifications } from '../../redux/actions/notificationActions';
+import { fetchMyTeacherProfile } from '../../redux/actions/teacherActions';
 
 const TopBar = ({ title = 'Dashboard' }) => {
+  const dispatch = useDispatch();
   const [open, setOpen] = useState(false);
   const { user, profile } = useSelector((state) => state.auth);
   const unreadCount = useSelector((state) => state.notifications.unreadCount);
+
+  useEffect(() => {
+    if (user?.role === 'teacher' && !profile?.classTeacherSectionIds && !profile?.subjectTeacherSubjectIds) {
+      dispatch(fetchMyTeacherProfile());
+    }
+  }, [dispatch, profile?.classTeacherSectionIds, profile?.subjectTeacherSubjectIds, user?.role]);
+
+  const handleBellClick = () => {
+    setOpen((current) => {
+      const nextOpen = !current;
+      if (nextOpen) {
+        dispatch(fetchNotifications({ unreadOnly: false }));
+      }
+      return nextOpen;
+    });
+  };
 
   return (
     <header className="sticky top-0 z-30 mb-8 flex items-center justify-between gap-4 border-b border-white/30 bg-surface/80 px-4 py-5 backdrop-blur-glass lg:px-8">
@@ -34,7 +53,7 @@ const TopBar = ({ title = 'Dashboard' }) => {
         <div className="relative">
           <button
             type="button"
-            onClick={() => setOpen((current) => !current)}
+            onClick={handleBellClick}
             className="relative rounded-full bg-white/70 p-3 text-on-surface shadow-glass-md"
           >
             <Bell className="h-4 w-4" />

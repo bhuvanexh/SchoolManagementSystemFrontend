@@ -8,7 +8,7 @@ import FormField from '../../../components/form/FormField';
 import Modal from '../../../components/modal/Modal';
 import { sectionSchema } from '../../../validation/sectionSchema';
 
-const SectionForm = ({ isOpen, teachers = [], initialValues, onClose, onSubmit, loading }) => {
+const SectionForm = ({ isOpen, title = 'Manage Sections', teachers = [], initialValues, onClose, onSubmit, loading }) => {
   const { control, handleSubmit, reset, formState: { errors, isValid } } = useForm({
     resolver: yupResolver(sectionSchema),
     defaultValues: {
@@ -24,7 +24,7 @@ const SectionForm = ({ isOpen, teachers = [], initialValues, onClose, onSubmit, 
   return (
     <Modal
       isOpen={isOpen}
-      title="Manage Sections"
+      title={title}
       onClose={onClose}
       footer={
         <>

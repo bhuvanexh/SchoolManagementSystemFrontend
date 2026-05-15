@@ -2,62 +2,113 @@ import { useEffect, useMemo, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 
 import PrimaryButton from '../../components/buttons/PrimaryButton';
+import ClassSectionFilter from '../../components/filters/ClassSectionFilter';
+import EmptyState from '../../components/feedback/EmptyState';
 import Loader from '../../components/feedback/Loader';
-import SelectInput from '../../components/inputs/SelectInput';
 import PageHeader from '../../components/layout/PageHeader';
 import PageWrapper from '../../components/layout/PageWrapper';
+import useFilterParams from '../../hooks/useFilterParams';
 import { fetchSectionAttendance, fetchStudentAttendance, markAttendance } from '../../redux/actions/attendanceActions';
-import { fetchSectionsByClass } from '../../redux/actions/sectionActions';
+import { fetchClasses } from '../../redux/actions/classActions';
 import { fetchStudents } from '../../redux/actions/studentActions';
 import { buildOptions } from '../../utils/helpers';
 import AttendanceReport from './components/AttendanceReport';
 import AttendanceSheet from './components/AttendanceSheet';
 
+const today = new Date().toISOString().slice(0, 10);
+
 const Attendance = () => {
   const dispatch = useDispatch();
   const role = useSelector((state) => state.auth.user?.role);
   const profile = useSelector((state) => state.auth.profile);
+  const classes = useSelector((state) => state.classes.list);
   const students = useSelector((state) => state.students.list);
-  const sections = useSelector((state) => state.sections.list);
   const records = useSelector((state) => state.attendance.records);
   const studentHistory = useSelector((state) => state.attendance.studentHistory);
   const loading = useSelector((state) => state.attendance.loading);
   const [mode, setMode] = useState('mark');
-  const [filters, setFilters] = useState({
-    sectionId: profile?.sectionId || '',
-    date: new Date().toISOString().slice(0, 10),
-    month: `${new Date().getMonth() + 1}`,
-    year: `${new Date().getFullYear()}`,
-  });
   const [values, setValues] = useState({});
+  const [params, setParams] = useFilterParams();
+
+  const date = params.date || today;
+  const classId = params.classId;
+  const sectionId = params.sectionId;
+
+  const [dateYear, dateMonth] = date.split('-');
+  const month = String(Number(dateMonth));
+  const year = dateYear;
 
   useEffect(() => {
-    if (role === 'teacher' && profile?.classId) dispatch(fetchSectionsByClass(profile.classId));
-  }, [dispatch, profile?.classId, role]);
+    if (role !== 'student') dispatch(fetchClasses());
+  }, [dispatch, role]);
 
+  // Pre-fill teacher's single class+section assignment into URL params
   useEffect(() => {
-    if (filters.sectionId) {
-      dispatch(fetchStudents({ sectionId: filters.sectionId }));
-      dispatch(fetchSectionAttendance({ sectionId: filters.sectionId, date: filters.date, month: filters.month, year: filters.year }));
+    if (role === 'teacher' && profile?.classTeacherSections?.length === 1) {
+      const assignment = profile.classTeacherSections[0];
+      if (!classId && !sectionId) {
+        setParams({ classId: assignment.classId || '', sectionId: assignment.sectionId || '' });
+      }
     }
-  }, [dispatch, filters]);
+  }, [profile?.classTeacherSections, role]);
 
+  // Fetch students + section attendance whenever section or date changes
+  useEffect(() => {
+    if (sectionId) {
+      dispatch(fetchStudents({ sectionId }));
+      dispatch(fetchSectionAttendance({ sectionId, date, month, year }));
+    }
+  }, [sectionId, date, dispatch]);
+
+  // Student role: fetch own attendance when month/year changes
   useEffect(() => {
     if (role === 'student' && profile?._id) {
-      dispatch(fetchStudentAttendance({ studentId: profile._id, month: filters.month, year: filters.year }));
+      dispatch(fetchStudentAttendance({ studentId: profile._id, month, year }));
     }
-  }, [dispatch, filters.month, filters.year, profile?._id, role]);
+  }, [dispatch, month, year, profile?._id, role]);
 
+  // Seed mark-attendance toggles from saved records.
+  // r.studentId is a populated object from the API, so compare by _id.
   useEffect(() => {
-    const nextValues = {};
+    const next = {};
     students.forEach((student) => {
-      nextValues[student._id] =
-        records.find((record) => (record.studentId || record.student?._id) === student._id)?.status || 'present';
+      const record = records.find((r) => {
+        const id = r.studentId?._id || r.studentId;
+        return id?.toString() === student._id?.toString();
+      });
+      next[student._id] = record?.status || 'present';
     });
-    setValues(nextValues);
+    setValues(next);
   }, [records, students]);
 
-  const sectionOptions = useMemo(() => buildOptions(sections), [sections]);
+  // Set of studentIds that have a saved record for the selected date
+  const savedStudentIds = useMemo(
+    () => new Set(records.map((r) => (r.studentId?._id || r.studentId)?.toString())),
+    [records]
+  );
+
+  const classOptions = useMemo(() => {
+    if (role === 'admin') return buildOptions(classes);
+    const allowedClassIds = new Set(
+      (profile?.classTeacherSections || []).map((item) => item.classId).filter(Boolean)
+    );
+    return buildOptions(classes.filter((item) => allowedClassIds.has(item._id)));
+  }, [classes, profile?.classTeacherSections, role]);
+
+  const singleSectionTeacher = role === 'teacher' && (profile?.classTeacherSections || []).length === 1;
+
+  const dateInput = (
+    <input
+      className="input-field"
+      type="date"
+      value={date}
+      max={today}
+      onChange={(e) => setParams({ date: e.target.value })}
+    />
+  );
+
+  const markedCount = students.filter((s) => savedStudentIds.has(s._id?.toString())).length;
+  const allMarked = students.length > 0 && markedCount === students.length;
 
   return (
     <PageWrapper>
@@ -68,42 +119,68 @@ const Attendance = () => {
         <button type="button" onClick={() => setMode('report')} className={mode === 'report' ? 'btn-primary' : 'btn-secondary'}>View Report</button>
       </div>
 
-      <div className="glass-panel grid gap-4 p-6 md:grid-cols-4">
-        {role !== 'student' ? <SelectInput value={filters.sectionId} onChange={(event) => setFilters((current) => ({ ...current, sectionId: event.target.value }))} options={sectionOptions} placeholder="Choose section" /> : null}
-        <input className="input-field" type="date" value={filters.date} onChange={(event) => setFilters((current) => ({ ...current, date: event.target.value }))} />
-        <input className="input-field" type="number" min="1" max="12" value={filters.month} onChange={(event) => setFilters((current) => ({ ...current, month: event.target.value }))} placeholder="Month" />
-        <input className="input-field" type="number" value={filters.year} onChange={(event) => setFilters((current) => ({ ...current, year: event.target.value }))} placeholder="Year" />
-      </div>
+      {role !== 'student' ? (
+        <ClassSectionFilter
+          classOptions={classOptions}
+          disabled={singleSectionTeacher}
+          className="md:grid-cols-3"
+          extra={dateInput}
+        />
+      ) : (
+        <div className="glass-panel p-6">{dateInput}</div>
+      )}
 
       {loading ? <Loader label="Loading attendance..." /> : null}
 
       {!loading && mode === 'mark' && role !== 'student' ? (
-        <>
-          <AttendanceSheet students={students} values={values} onChange={(studentId, status) => setValues((current) => ({ ...current, [studentId]: status }))} />
-          <div className="flex justify-end">
-            <PrimaryButton
-              type="button"
-              disabled={!filters.sectionId || loading}
-              onClick={() =>
-                dispatch(
-                  markAttendance({
-                    sectionId: filters.sectionId,
-                    date: filters.date,
-                    records: students.map((student) => ({
-                      studentId: student._id,
-                      status: values[student._id] || 'present',
-                    })),
-                  })
-                )
-              }
-            >
-              {loading ? 'Saving...' : 'Save Attendance'}
-            </PrimaryButton>
-          </div>
-        </>
+        !sectionId ? (
+          <EmptyState title="No section selected" message="Choose a class and section above to mark attendance." />
+        ) : !students.length ? (
+          <EmptyState title="No students" message="No active students found in this section." />
+        ) : (
+          <>
+            {allMarked ? (
+              <div className="glass-panel-sm p-4 text-sm text-on-surface-variant">
+                Attendance already recorded for all {students.length} students on {date}. You can still edit and re-save.
+              </div>
+            ) : markedCount > 0 ? (
+              <div className="glass-panel-sm p-4 text-sm text-on-surface-variant">
+                {markedCount} of {students.length} students already have attendance recorded for {date}.
+              </div>
+            ) : null}
+            <AttendanceSheet
+              students={students}
+              values={values}
+              savedStudentIds={savedStudentIds}
+              onChange={(studentId, status) => setValues((cur) => ({ ...cur, [studentId]: status }))}
+            />
+            <div className="flex justify-end">
+              <PrimaryButton
+                type="button"
+                disabled={loading}
+                onClick={() =>
+                  dispatch(
+                    markAttendance({
+                      sectionId,
+                      date,
+                      records: students.map((student) => ({
+                        studentId: student._id,
+                        status: values[student._id] || 'present',
+                      })),
+                    })
+                  )
+                }
+              >
+                {loading ? 'Saving...' : 'Save Attendance'}
+              </PrimaryButton>
+            </div>
+          </>
+        )
       ) : null}
 
-      {!loading && mode === 'report' ? <AttendanceReport records={role === 'student' ? studentHistory : records} /> : null}
+      {!loading && mode === 'report' ? (
+        <AttendanceReport records={role === 'student' ? studentHistory : records} />
+      ) : null}
     </PageWrapper>
   );
 };

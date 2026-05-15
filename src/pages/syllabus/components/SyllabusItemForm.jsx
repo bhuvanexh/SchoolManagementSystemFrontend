@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 
 import PrimaryButton from '../../../components/buttons/PrimaryButton';
@@ -5,24 +6,33 @@ import SecondaryButton from '../../../components/buttons/SecondaryButton';
 import FormField from '../../../components/form/FormField';
 import Modal from '../../../components/modal/Modal';
 
+const EMPTY = { topic: '', estimatedPeriods: 1, description: '' };
+
 const SyllabusItemForm = ({ isOpen, onClose, onSubmit, loading, defaultValues }) => {
   const { control, handleSubmit, reset, formState: { isValid, errors } } = useForm({
-    defaultValues: defaultValues || { topic: '', estimatedPeriods: 1, description: '' },
+    defaultValues: defaultValues || EMPTY,
     mode: 'onChange',
   });
+
+  // Reset form whenever the modal opens or switches between edit/add
+  useEffect(() => {
+    reset(defaultValues || EMPTY);
+  }, [isOpen, defaultValues, reset]);
 
   return (
     <Modal
       isOpen={isOpen}
-      title="Syllabus Item"
+      title={defaultValues ? 'Edit Syllabus Item' : 'Add Syllabus Item'}
       onClose={() => {
-        reset();
+        reset(EMPTY);
         onClose();
       }}
       footer={
         <>
           <SecondaryButton type="button" onClick={onClose}>Cancel</SecondaryButton>
-          <PrimaryButton type="button" onClick={handleSubmit(onSubmit)} disabled={!isValid || loading}>{loading ? 'Saving...' : 'Save'}</PrimaryButton>
+          <PrimaryButton type="button" onClick={handleSubmit(onSubmit)} disabled={!isValid || loading}>
+            {loading ? 'Saving...' : 'Save'}
+          </PrimaryButton>
         </>
       }
     >

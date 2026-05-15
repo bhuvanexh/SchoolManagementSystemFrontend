@@ -10,6 +10,7 @@ import EmptyState from '../../components/feedback/EmptyState';
 import Loader from '../../components/feedback/Loader';
 import PageHeader from '../../components/layout/PageHeader';
 import PageWrapper from '../../components/layout/PageWrapper';
+import usePermission from '../../hooks/usePermission';
 import { deleteEvent, fetchEvents } from '../../redux/actions/eventActions';
 import { formatDateTime, truncate } from '../../utils/formatters';
 
@@ -17,6 +18,7 @@ const Events = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const role = useSelector((state) => state.auth.user?.role);
+  const { canCreateScopedContent, canManageNotice } = usePermission();
   const { list, loading } = useSelector((state) => state.events);
   const [upcomingOnly, setUpcomingOnly] = useState(true);
   const [deleteId, setDeleteId] = useState(null);
@@ -30,7 +32,7 @@ const Events = () => {
       <PageHeader
         title="Events"
         description="Coordinate upcoming school activities, class events, and section-specific schedules."
-        actions={role !== 'student' ? <Link to="/events/new"><PrimaryButton><span className="inline-flex items-center gap-2"><PlusCircle className="h-4 w-4" /> Create Event</span></PrimaryButton></Link> : null}
+        actions={role !== 'student' && canCreateScopedContent ? <Link to="/events/new"><PrimaryButton><span className="inline-flex items-center gap-2"><PlusCircle className="h-4 w-4" /> Create Event</span></PrimaryButton></Link> : null}
       />
 
       <div className="flex items-center gap-3">
@@ -51,8 +53,8 @@ const Events = () => {
                 </div>
                 <div className="flex items-center gap-2">
                   <Badge tone="primary">{event.visibility || 'event'}</Badge>
-                  {role !== 'student' ? <button type="button" onClick={() => navigate(`/events/${event._id}/edit`)} className="rounded-full bg-white p-2 text-secondary"><Pencil className="h-4 w-4" /></button> : null}
-                  {role !== 'student' ? <button type="button" onClick={() => setDeleteId(event._id)} className="rounded-full bg-white p-2 text-error"><Trash2 className="h-4 w-4" /></button> : null}
+                  {canManageNotice(event) ? <button type="button" onClick={() => navigate(`/events/${event._id}/edit`)} className="rounded-full bg-white p-2 text-secondary"><Pencil className="h-4 w-4" /></button> : null}
+                  {canManageNotice(event) ? <button type="button" onClick={() => setDeleteId(event._id)} className="rounded-full bg-white p-2 text-error"><Trash2 className="h-4 w-4" /></button> : null}
                 </div>
               </div>
               <p className="mt-4 text-sm leading-7 text-on-surface-variant">{truncate(event.description || 'No description provided.', 220)}</p>

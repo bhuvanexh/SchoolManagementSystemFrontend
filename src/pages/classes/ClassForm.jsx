@@ -17,6 +17,12 @@ import { classSchema } from '../../validation/classSchema';
 import { buildOptions } from '../../utils/helpers';
 
 const ClassForm = () => {
+  const handleNumberKeyDown = (event) => {
+    const allowed = ['Backspace', 'Tab', 'ArrowLeft', 'ArrowRight', 'Delete'];
+    if (allowed.includes(event.key)) return;
+    if (!/^\d$/.test(event.key)) event.preventDefault();
+  };
+
   const { id } = useParams();
   const isEdit = Boolean(id);
   const dispatch = useDispatch();
@@ -41,20 +47,24 @@ const ClassForm = () => {
     if (isEdit && current?._id === id) {
       reset({
         ...current,
-        classTeacherId: current.classTeacher?._id || current.classTeacherId || '',
+        classTeacherId: current.classTeacherId?._id || current.classTeacherId || '',
       });
     }
   }, [current, id, isEdit, reset]);
 
   const onSubmit = async (values) => {
+    const payload = {
+      ...values,
+      name: String(values.name),
+    };
     const result = isEdit
-      ? await dispatch(updateClass({ id, ...values }))
-      : await dispatch(createClass(values));
+      ? await dispatch(updateClass({ id, ...payload }))
+      : await dispatch(createClass(payload));
 
     if (!result.error) navigate(isEdit ? `/classes/${id}` : '/classes');
   };
 
-  if (isEdit && loading && !current) return <Loader label="Loading class..." />;
+  if (isEdit && (loading || !current || current._id !== id)) return <Loader label="Loading class..." />;
 
   return (
     <PageWrapper>
@@ -62,7 +72,16 @@ const ClassForm = () => {
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
         <FormSection title="Class Setup">
-          <FormField control={control} name="name" label="Class Name" error={errors.name} />
+          <FormField
+            control={control}
+            name="name"
+            label="Class"
+            type="number"
+            min={1}
+            max={12}
+            error={errors.name}
+            onKeyDown={handleNumberKeyDown}
+          />
           <FormField control={control} name="hasSections" label="Has Sections" type="checkbox" error={errors.hasSections} />
           {!hasSections ? <FormField control={control} name="classTeacherId" label="Class Teacher" type="select" options={buildOptions(teachers)} error={errors.classTeacherId} /> : null}
           <FormField control={control} name="academicYear" label="Academic Year" error={errors.academicYear} />

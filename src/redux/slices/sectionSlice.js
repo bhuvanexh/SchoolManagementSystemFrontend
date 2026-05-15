@@ -10,6 +10,9 @@ import { createEntitySlice } from '../sliceFactory';
 const slice = createEntitySlice({
   name: 'sections',
   initialState: { list: [], loading: false, error: null },
+  reducers: {
+    clearSections: (state) => { state.list = []; },
+  },
   thunkMap: {
     fetchSectionsByClass: {
       thunk: fetchSectionsByClass,
@@ -44,4 +47,5 @@ const slice = createEntitySlice({
   },
 });
 
+export const { clearSections } = slice.actions;
 export default slice.reducer;

@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 
 import { markAllAsRead, markAsRead } from '../../../redux/actions/notificationActions';
 import { formatDateTime } from '../../../utils/formatters';
+import { getNotificationRoute } from '../../../utils/notificationRoutes';
 
 const NotificationDropdown = ({ open, onClose }) => {
   const dispatch = useDispatch();
@@ -17,9 +18,7 @@ const NotificationDropdown = ({ open, onClose }) => {
       await dispatch(markAsRead(notification._id));
     }
 
-    if (notification.link) {
-      navigate(notification.link);
-    }
+    navigate(getNotificationRoute(notification.type, notification.referenceId));
 
     onClose?.();
   };

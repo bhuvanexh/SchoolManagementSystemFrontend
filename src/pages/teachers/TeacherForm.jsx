@@ -9,6 +9,7 @@ import SecondaryButton from '../../components/buttons/SecondaryButton';
 import FormField from '../../components/form/FormField';
 import FormSection from '../../components/form/FormSection';
 import Loader from '../../components/feedback/Loader';
+import MultiSelect from '../../components/inputs/MultiSelect';
 import PageHeader from '../../components/layout/PageHeader';
 import PageWrapper from '../../components/layout/PageWrapper';
 import { fetchCoreSubjects } from '../../redux/actions/coreSubjectActions';
@@ -16,6 +17,12 @@ import { createTeacher, fetchTeacherById, updateTeacher } from '../../redux/acti
 import { teacherSchema } from '../../validation/teacherSchema';
 
 const TeacherForm = () => {
+  const handlePhoneKeyDown = (event) => {
+    const allowed = ['Backspace', 'Tab', 'ArrowLeft', 'ArrowRight', 'Delete'];
+    if (allowed.includes(event.key)) return;
+    if (!/^\d$/.test(event.key)) event.preventDefault();
+  };
+
   const { id } = useParams();
   const isEdit = Boolean(id);
   const dispatch = useDispatch();
@@ -90,25 +97,28 @@ const TeacherForm = () => {
         <FormSection title="Teacher Profile">
           <FormField control={control} name="name" label="Full Name" error={errors.name} />
           <FormField control={control} name="email" label="Email" type="email" error={errors.email} />
-          <FormField control={control} name="phone" label="Phone" error={errors.phone} />
+          <FormField
+            control={control}
+            name="phone"
+            label="Phone"
+            error={errors.phone}
+            maxLength={10}
+            inputMode="numeric"
+            onKeyDown={handlePhoneKeyDown}
+          />
           <div className="flex flex-col gap-1.5">
             <label className="text-xs font-bold uppercase tracking-widest text-on-surface-variant">Core Subjects</label>
             <Controller
               name="coreSubjects"
               control={control}
               render={({ field }) => (
-                <select
-                  multiple
-                  className="input-field min-h-40"
+                <MultiSelect
+                  options={subjectOptions}
                   value={field.value || []}
-                  onChange={(event) =>
-                    field.onChange(Array.from(event.target.selectedOptions).map((option) => option.value))
-                  }
-                >
-                  {subjectOptions.map((option) => (
-                    <option key={option.value} value={option.value}>{option.label}</option>
-                  ))}
-                </select>
+                  onChange={field.onChange}
+                  placeholder="Select core subjects"
+                  searchPlaceholder="Search subjects..."
+                />
               )}
             />
             {errors.coreSubjects ? <span className="text-xs font-medium text-error">{errors.coreSubjects.message}</span> : null}

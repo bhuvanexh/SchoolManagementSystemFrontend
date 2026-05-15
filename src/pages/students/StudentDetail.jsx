@@ -49,9 +49,10 @@ const StudentDetail = () => {
       />
 
       <section className="glass-panel p-6">
-        <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
+        <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-5">
           <div><p className="text-xs font-bold uppercase tracking-widest text-on-surface-variant">Roll No</p><p className="mt-2 font-semibold text-on-surface">{current?.rollNumber || '—'}</p></div>
-          <div><p className="text-xs font-bold uppercase tracking-widest text-on-surface-variant">Section</p><p className="mt-2 font-semibold text-on-surface">{current?.section?.name || '—'}</p></div>
+          <div><p className="text-xs font-bold uppercase tracking-widest text-on-surface-variant">Class</p><p className="mt-2 font-semibold text-on-surface">{current?.sectionId?.classId?.name || '—'}</p></div>
+          <div><p className="text-xs font-bold uppercase tracking-widest text-on-surface-variant">Section</p><p className="mt-2 font-semibold text-on-surface">{current?.sectionId?.name || '—'}</p></div>
           <div><p className="text-xs font-bold uppercase tracking-widest text-on-surface-variant">Parent</p><p className="mt-2 font-semibold text-on-surface">{current?.parentName || '—'}</p></div>
           <div><p className="text-xs font-bold uppercase tracking-widest text-on-surface-variant">Syllabus Progress</p><p className="mt-2 font-semibold text-on-surface">{syllabusProgress}%</p></div>
         </div>

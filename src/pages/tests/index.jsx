@@ -12,6 +12,7 @@ import Loader from '../../components/feedback/Loader';
 import SelectInput from '../../components/inputs/SelectInput';
 import PageHeader from '../../components/layout/PageHeader';
 import PageWrapper from '../../components/layout/PageWrapper';
+import usePermission from '../../hooks/usePermission';
 import { fetchSubjects } from '../../redux/actions/subjectActions';
 import { deleteTest, fetchTests, publishTest } from '../../redux/actions/testActions';
 import { buildOptions } from '../../utils/helpers';
@@ -25,6 +26,7 @@ const Tests = () => {
   const sections = useSelector((state) => state.sections.list);
   const list = useSelector((state) => state.tests.list);
   const loading = useSelector((state) => state.tests.loading);
+  const { isAdmin, isSubjectTeacherOf } = usePermission();
   const [filters, setFilters] = useState({ subjectId: '', sectionId: '' });
   const [confirm, setConfirm] = useState({ type: null, id: null });
 
@@ -48,15 +50,15 @@ const Tests = () => {
         header: 'Actions',
         cell: ({ row }) => (
           <div className="flex gap-2">
-            {role !== 'student' ? <button type="button" onClick={() => navigate(`/tests/${row.original._id}`)} className="rounded-full bg-white p-2 text-secondary"><Pencil className="h-4 w-4" /></button> : null}
-            {role !== 'student' ? <button type="button" onClick={() => navigate(`/tests/${row.original._id}/grade`)} className="rounded-full bg-white p-2 text-primary"><PenLine className="h-4 w-4" /></button> : null}
-            {role !== 'student' && !row.original.isPublished ? <button type="button" onClick={() => setConfirm({ type: 'publish', id: row.original._id })} className="rounded-full bg-white p-2 text-tertiary"><Send className="h-4 w-4" /></button> : null}
-            {role !== 'student' && !row.original.isPublished ? <button type="button" onClick={() => setConfirm({ type: 'delete', id: row.original._id })} className="rounded-full bg-white p-2 text-error"><Trash2 className="h-4 w-4" /></button> : null}
+            {role !== 'student' && (isAdmin || isSubjectTeacherOf(row.original.subject?._id || row.original.subjectId)) ? <button type="button" onClick={() => navigate(`/tests/${row.original._id}`)} className="rounded-full bg-white p-2 text-secondary"><Pencil className="h-4 w-4" /></button> : null}
+            {role !== 'student' && (isAdmin || isSubjectTeacherOf(row.original.subject?._id || row.original.subjectId)) ? <button type="button" onClick={() => navigate(`/tests/${row.original._id}/grade`)} className="rounded-full bg-white p-2 text-primary"><PenLine className="h-4 w-4" /></button> : null}
+            {role !== 'student' && !row.original.isPublished && (isAdmin || isSubjectTeacherOf(row.original.subject?._id || row.original.subjectId)) ? <button type="button" onClick={() => setConfirm({ type: 'publish', id: row.original._id })} className="rounded-full bg-white p-2 text-tertiary"><Send className="h-4 w-4" /></button> : null}
+            {role !== 'student' && !row.original.isPublished && (isAdmin || isSubjectTeacherOf(row.original.subject?._id || row.original.subjectId)) ? <button type="button" onClick={() => setConfirm({ type: 'delete', id: row.original._id })} className="rounded-full bg-white p-2 text-error"><Trash2 className="h-4 w-4" /></button> : null}
           </div>
         ),
       },
     ],
-    [navigate, role]
+    [isAdmin, isSubjectTeacherOf, navigate, role]
   );
 
   return (
@@ -64,12 +66,12 @@ const Tests = () => {
       <PageHeader
         title="Tests & Results"
         description="Create assessments, collect marks, publish results, and track performance."
-        actions={role !== 'student' ? <Link to="/tests/new"><PrimaryButton><span className="inline-flex items-center gap-2"><PlusCircle className="h-4 w-4" /> Create Test</span></PrimaryButton></Link> : null}
+        actions={role !== 'student' && (isAdmin || subjects.some((subject) => isSubjectTeacherOf(subject._id))) ? <Link to="/tests/new"><PrimaryButton><span className="inline-flex items-center gap-2"><PlusCircle className="h-4 w-4" /> Create Test</span></PrimaryButton></Link> : null}
       />
 
       <div className="glass-panel grid gap-4 p-6 md:grid-cols-2">
-        <SelectInput value={filters.subjectId} onChange={(event) => setFilters((current) => ({ ...current, subjectId: event.target.value }))} options={buildOptions(subjects)} placeholder="Filter by subject" />
-        <SelectInput value={filters.sectionId} onChange={(event) => setFilters((current) => ({ ...current, sectionId: event.target.value }))} options={buildOptions(sections)} placeholder="Filter by section" />
+        <SelectInput label="Subject" value={filters.subjectId} onChange={(value) => setFilters((current) => ({ ...current, subjectId: value }))} options={buildOptions(subjects)} placeholder="All subjects" />
+        <SelectInput label="Section" value={filters.sectionId} onChange={(value) => setFilters((current) => ({ ...current, sectionId: value }))} options={buildOptions(sections)} placeholder="All sections" />
       </div>
 
       {loading ? <Loader label="Loading tests..." /> : null}

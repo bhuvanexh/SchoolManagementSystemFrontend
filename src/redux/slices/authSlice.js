@@ -1,6 +1,7 @@
 import { createSlice } from '@reduxjs/toolkit';
 
 import { changePassword, loginUser } from '../actions/authActions';
+import { fetchMyTeacherProfile } from '../actions/teacherActions';
 
 const initialState = {
   token: null,
@@ -42,6 +43,9 @@ const authSlice = createSlice({
       .addCase(changePassword.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
+      })
+      .addCase(fetchMyTeacherProfile.fulfilled, (state, action) => {
+        state.profile = action.payload;
       });
   },
 });

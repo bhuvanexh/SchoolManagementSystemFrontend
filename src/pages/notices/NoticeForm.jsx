@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import { useDispatch, useSelector } from 'react-redux';
@@ -15,6 +15,7 @@ import { NOTICE_VISIBILITY } from '../../utils/constants';
 import { fetchClasses } from '../../redux/actions/classActions';
 import { fetchNoticeById, createNotice, updateNotice } from '../../redux/actions/noticeActions';
 import { fetchSectionsByClass } from '../../redux/actions/sectionActions';
+import { clearSections } from '../../redux/slices/sectionSlice';
 import { buildOptions } from '../../utils/helpers';
 import { noticeSchema } from '../../validation/noticeSchema';
 
@@ -29,7 +30,7 @@ const NoticeForm = () => {
   const current = useSelector((state) => state.notices.current);
   const loading = useSelector((state) => state.notices.loading);
 
-  const { control, watch, handleSubmit, reset, formState: { errors, isValid } } = useForm({
+  const { control, watch, handleSubmit, reset, setValue, formState: { errors, isValid } } = useForm({
     resolver: yupResolver(noticeSchema),
     defaultValues: { title: '', content: '', visibility: role === 'teacher' ? 'class' : 'school', targetId: '', expiresAt: '', isPriority: false, classId: '' },
     mode: 'onChange',
@@ -38,14 +39,28 @@ const NoticeForm = () => {
   const visibility = watch('visibility');
   const classId = watch('classId');
 
+  const selectedClass = useMemo(
+    () => (classId ? classes.find((c) => c._id === classId) ?? null : null),
+    [classes, classId]
+  );
+  const classHasSections = selectedClass?.hasSections === true;
+
   useEffect(() => {
     dispatch(fetchClasses());
     if (isEdit) dispatch(fetchNoticeById(id));
   }, [dispatch, id, isEdit]);
 
   useEffect(() => {
-    if (classId) dispatch(fetchSectionsByClass(classId));
-  }, [classId, dispatch]);
+    if (classId && classHasSections) {
+      dispatch(fetchSectionsByClass(classId));
+    }
+  }, [classId, classHasSections, dispatch]);
+
+  // When class changes, clear the section target
+  useEffect(() => {
+    dispatch(clearSections());
+    setValue('targetId', '');
+  }, [classId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (isEdit && current?._id === id) {
@@ -78,12 +93,39 @@ const NoticeForm = () => {
         <FormSection title="Notice Details">
           <FormField control={control} name="title" label="Title" error={errors.title} />
           <FormField control={control} name="content" label="Content" type="textarea" rows={6} error={errors.content} />
-          <FormField control={control} name="visibility" label="Visibility" type="select" options={NOTICE_VISIBILITY.filter((option) => role === 'teacher' ? option.value !== 'school' : true)} error={errors.visibility} />
-          {visibility === 'class' ? <FormField control={control} name="targetId" label="Target Class" type="select" options={buildOptions(classes)} error={errors.targetId} /> : null}
+          <FormField
+            control={control}
+            name="visibility"
+            label="Visibility"
+            type="select"
+            options={NOTICE_VISIBILITY.filter((option) => role === 'teacher' ? option.value !== 'school' : true)}
+            error={errors.visibility}
+          />
+          {visibility === 'class' ? (
+            <FormField control={control} name="targetId" label="Target Class" type="select" options={buildOptions(classes)} error={errors.targetId} />
+          ) : null}
           {visibility === 'section' ? (
             <>
-              <FormField control={control} name="classId" label="Class" type="select" options={buildOptions(classes)} error={errors.classId} />
-              <FormField control={control} name="targetId" label="Target Section" type="select" options={buildOptions(sections)} error={errors.targetId} />
+              <FormField
+                control={control}
+                name="classId"
+                label="Class"
+                type="select"
+                options={buildOptions(classes)}
+                error={errors.classId}
+              />
+              {classHasSections ? (
+                <FormField
+                  control={control}
+                  name="targetId"
+                  label="Target Section"
+                  type="select"
+                  options={buildOptions(sections)}
+                  error={errors.targetId}
+                />
+              ) : classId ? (
+                <p className="text-sm text-on-surface-variant">This class has no sections. Choose a different class or change visibility to Class.</p>
+              ) : null}
             </>
           ) : null}
           <FormField control={control} name="expiresAt" label="Expiry Date" type="date" error={errors.expiresAt} />

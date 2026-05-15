@@ -10,6 +10,7 @@ import EmptyState from '../../components/feedback/EmptyState';
 import Loader from '../../components/feedback/Loader';
 import PageHeader from '../../components/layout/PageHeader';
 import PageWrapper from '../../components/layout/PageWrapper';
+import usePermission from '../../hooks/usePermission';
 import { deleteNotice, fetchNotices } from '../../redux/actions/noticeActions';
 import { formatDate, truncate } from '../../utils/formatters';
 
@@ -17,6 +18,7 @@ const Notices = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const role = useSelector((state) => state.auth.user?.role);
+  const { canCreateScopedContent, canManageNotice } = usePermission();
   const { list, loading } = useSelector((state) => state.notices);
   const [deleteId, setDeleteId] = useState(null);
 
@@ -29,7 +31,7 @@ const Notices = () => {
       <PageHeader
         title="Notices"
         description="Publish important communication across the school, class, or section."
-        actions={role !== 'student' ? <Link to="/notices/new"><PrimaryButton><span className="inline-flex items-center gap-2"><PlusCircle className="h-4 w-4" /> Create Notice</span></PrimaryButton></Link> : null}
+        actions={role !== 'student' && canCreateScopedContent ? <Link to="/notices/new"><PrimaryButton><span className="inline-flex items-center gap-2"><PlusCircle className="h-4 w-4" /> Create Notice</span></PrimaryButton></Link> : null}
       />
 
       {loading ? <Loader label="Loading notices..." /> : null}
@@ -45,8 +47,8 @@ const Notices = () => {
                 </div>
                 <div className="flex items-center gap-2">
                   <Badge tone={notice.isPriority ? 'error' : 'primary'}>{notice.visibility || 'notice'}</Badge>
-                  {role !== 'student' ? <button type="button" onClick={() => navigate(`/notices/${notice._id}/edit`)} className="rounded-full bg-white p-2 text-secondary"><Pencil className="h-4 w-4" /></button> : null}
-                  {role !== 'student' ? <button type="button" onClick={() => setDeleteId(notice._id)} className="rounded-full bg-white p-2 text-error"><Trash2 className="h-4 w-4" /></button> : null}
+                  {canManageNotice(notice) ? <button type="button" onClick={() => navigate(`/notices/${notice._id}/edit`)} className="rounded-full bg-white p-2 text-secondary"><Pencil className="h-4 w-4" /></button> : null}
+                  {canManageNotice(notice) ? <button type="button" onClick={() => setDeleteId(notice._id)} className="rounded-full bg-white p-2 text-error"><Trash2 className="h-4 w-4" /></button> : null}
                 </div>
               </div>
               <p className="mt-4 text-sm leading-7 text-on-surface-variant">{truncate(notice.content, 220)}</p>

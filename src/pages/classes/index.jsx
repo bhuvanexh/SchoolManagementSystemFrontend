@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { Link, useNavigate } from 'react-router-dom';
 
+import SecondaryButton from '../../components/buttons/SecondaryButton';
 import PrimaryButton from '../../components/buttons/PrimaryButton';
 import Badge from '../../components/data-display/Badge';
 import DataTable from '../../components/data-display/DataTable';
@@ -11,26 +12,53 @@ import EmptyState from '../../components/feedback/EmptyState';
 import Loader from '../../components/feedback/Loader';
 import PageHeader from '../../components/layout/PageHeader';
 import PageWrapper from '../../components/layout/PageWrapper';
+import Modal from '../../components/modal/Modal';
 import { deactivateClass, fetchClasses } from '../../redux/actions/classActions';
+import { fetchSectionsByClass } from '../../redux/actions/sectionActions';
 
 const Classes = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const { list, loading } = useSelector((state) => state.classes);
+  const sections = useSelector((state) => state.sections.list);
+  const sectionsLoading = useSelector((state) => state.sections.loading);
   const userRole = useSelector((state) => state.auth.user?.role);
   const [deleteId, setDeleteId] = useState(null);
+  const [sectionsClass, setSectionsClass] = useState(null);
 
   useEffect(() => {
     dispatch(fetchClasses());
   }, [dispatch]);
+
+  const handleViewSections = (cls) => {
+    setSectionsClass(cls);
+    dispatch(fetchSectionsByClass(cls._id));
+  };
 
   const columns = useMemo(
     () => [
       { header: 'Class Name', accessorKey: 'name' },
       { header: 'Has Sections', cell: ({ row }) => <Badge tone="primary">{row.original.hasSections ? 'Yes' : 'No'}</Badge> },
       { header: 'Academic Year', accessorKey: 'academicYear' },
-      { header: 'Class Teacher', cell: ({ row }) => row.original.hasSections ? 'See sections' : row.original.classTeacher?.name || 'Unassigned' },
-      { header: 'Student Count', accessorKey: 'studentCount' },
+      {
+        header: 'Class Teacher',
+        cell: ({ row }) =>
+          row.original.hasSections ? (
+            <button
+              type="button"
+              onClick={() => handleViewSections(row.original)}
+              className="text-sm font-semibold text-primary hover:underline"
+            >
+              See sections
+            </button>
+          ) : (
+            row.original.classTeacherId?.name || 'Unassigned'
+          ),
+      },
+      {
+        header: 'Students',
+        cell: ({ row }) => row.original.studentCount ?? 0,
+      },
       {
         header: 'Actions',
         cell: ({ row }) => (
@@ -48,7 +76,7 @@ const Classes = () => {
   return (
     <PageWrapper>
       <PageHeader
-        title={userRole === 'teacher' ? 'My Classes' : 'Classes'}
+        title="Classes"
         description="Track class structures, section setup, staffing, and enrollment."
         actions={
           userRole === 'admin' ? (
@@ -60,6 +88,30 @@ const Classes = () => {
       {loading ? <Loader label="Loading classes..." /> : null}
       {!loading && !list.length ? <EmptyState title="No classes found" message="Create your first class to begin managing sections and students." /> : null}
       {!loading && list.length ? <DataTable columns={columns} data={list} /> : null}
+
+      <Modal
+        isOpen={Boolean(sectionsClass)}
+        title={`Class ${sectionsClass?.name} — Sections`}
+        onClose={() => setSectionsClass(null)}
+        footer={<SecondaryButton type="button" onClick={() => setSectionsClass(null)}>Close</SecondaryButton>}
+      >
+        {sectionsLoading ? (
+          <Loader label="Loading sections..." />
+        ) : sections.length === 0 ? (
+          <p className="text-sm text-on-surface-variant">No sections found for this class.</p>
+        ) : (
+          <div className="space-y-3">
+            {sections.map((section) => (
+              <div key={section._id} className="rounded-glass-sm bg-white/50 p-4">
+                <p className="font-semibold text-on-surface">Section {section.name}</p>
+                <p className="mt-1 text-sm text-on-surface-variant">
+                  Teacher: {section.classTeacherId?.name || 'Unassigned'} · Students: {section.studentCount ?? 0}
+                </p>
+              </div>
+            ))}
+          </div>
+        )}
+      </Modal>
 
       <ConfirmDialog
         isOpen={Boolean(deleteId)}

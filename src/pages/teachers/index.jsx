@@ -80,7 +80,7 @@ const Teachers = () => {
 
       <div className="glass-panel grid gap-4 p-6 md:grid-cols-[1fr_280px]">
         <SearchInput value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search teachers" />
-        <SelectInput value={coreSubject} onChange={(event) => setCoreSubject(event.target.value)} options={buildOptions(coreSubjectList)} placeholder="Filter by core subject" />
+        <SelectInput value={coreSubject} onChange={(value) => setCoreSubject(value)} options={buildOptions(coreSubjectList)} placeholder="Filter by core subject" />
       </div>
 
       {loading ? <Loader label="Loading teachers..." /> : null}

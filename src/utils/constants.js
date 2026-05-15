@@ -6,7 +6,7 @@ export const ROLES = {
 
 export const ATTENDANCE_STATUSES = [
   { label: 'Present', value: 'present' },
-  { label: 'Half Day', value: 'halfday' },
+  { label: 'Half Day', value: 'halfDay' },
   { label: 'Absent', value: 'absent' },
 ];
 

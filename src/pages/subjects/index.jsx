@@ -8,21 +8,20 @@ import DataTable from '../../components/data-display/DataTable';
 import ConfirmDialog from '../../components/feedback/ConfirmDialog';
 import EmptyState from '../../components/feedback/EmptyState';
 import Loader from '../../components/feedback/Loader';
-import SelectInput from '../../components/inputs/SelectInput';
+import ClassSectionFilter from '../../components/filters/ClassSectionFilter';
 import PageHeader from '../../components/layout/PageHeader';
 import PageWrapper from '../../components/layout/PageWrapper';
+import useFilterParams from '../../hooks/useFilterParams';
+import usePermission from '../../hooks/usePermission';
 import { fetchClasses } from '../../redux/actions/classActions';
-import { fetchSectionsByClass } from '../../redux/actions/sectionActions';
 import { deleteSubject, fetchSubjects } from '../../redux/actions/subjectActions';
-import { buildOptions } from '../../utils/helpers';
 
 const Subjects = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const { list, loading } = useSelector((state) => state.subjects);
-  const classes = useSelector((state) => state.classes.list);
-  const sections = useSelector((state) => state.sections.list);
-  const [filters, setFilters] = useState({ classId: '', sectionId: '' });
+  const { canCreateScopedContent, canManageSubjectsIn } = usePermission();
+  const [params] = useFilterParams();
   const [deleteId, setDeleteId] = useState(null);
 
   useEffect(() => {
@@ -30,32 +29,29 @@ const Subjects = () => {
   }, [dispatch]);
 
   useEffect(() => {
-    dispatch(fetchSubjects(filters));
-  }, [dispatch, filters]);
-
-  useEffect(() => {
-    if (filters.classId) dispatch(fetchSectionsByClass(filters.classId));
-  }, [dispatch, filters.classId]);
+    dispatch(fetchSubjects({ classId: params.classId, sectionId: params.sectionId }));
+  }, [params.classId, params.sectionId, dispatch]);
 
   const columns = useMemo(
     () => [
       { header: 'Subject Name', accessorKey: 'name' },
-      { header: 'Core Subject', cell: ({ row }) => row.original.coreSubject?.name || '—' },
-      { header: 'Section', cell: ({ row }) => row.original.section?.name || '—' },
-      { header: 'Subject Teacher', cell: ({ row }) => row.original.subjectTeacher?.name || '—' },
+      { header: 'Core Subject', cell: ({ row }) => row.original.coreSubjectId?.name || '—' },
+      { header: 'Class', cell: ({ row }) => row.original.classId?.name || '—' },
+      { header: 'Section', cell: ({ row }) => row.original.sectionId?.name || '—' },
+      { header: 'Subject Teacher', cell: ({ row }) => row.original.subjectTeacherId?.name || '—' },
       { header: 'Periods/Week', accessorKey: 'periodsPerWeek' },
       {
         header: 'Actions',
         cell: ({ row }) => (
           <div className="flex gap-2">
-            <button type="button" onClick={() => navigate(`/subjects/${row.original._id}/edit`)} className="rounded-full bg-white p-2 text-secondary"><Pencil className="h-4 w-4" /></button>
-            <button type="button" onClick={() => navigate(`/subjects/${row.original._id}/edit`)} className="rounded-full bg-white p-2 text-primary"><UserCog2 className="h-4 w-4" /></button>
-            <button type="button" onClick={() => setDeleteId(row.original._id)} className="rounded-full bg-white p-2 text-error"><Trash2 className="h-4 w-4" /></button>
+            {canManageSubjectsIn(row.original.sectionId?._id) ? <button type="button" onClick={() => navigate(`/subjects/${row.original._id}/edit`)} className="rounded-full bg-white p-2 text-secondary"><Pencil className="h-4 w-4" /></button> : null}
+            {canManageSubjectsIn(row.original.sectionId?._id) ? <button type="button" onClick={() => navigate(`/subjects/${row.original._id}/edit`)} className="rounded-full bg-white p-2 text-primary"><UserCog2 className="h-4 w-4" /></button> : null}
+            {canManageSubjectsIn(row.original.sectionId?._id) ? <button type="button" onClick={() => setDeleteId(row.original._id)} className="rounded-full bg-white p-2 text-error"><Trash2 className="h-4 w-4" /></button> : null}
           </div>
         ),
       },
     ],
-    [navigate]
+    [canManageSubjectsIn, navigate]
   );
 
   return (
@@ -63,13 +59,10 @@ const Subjects = () => {
       <PageHeader
         title="Subjects"
         description="Manage per-section subject records, teacher assignments, and weekly periods."
-        actions={<Link to="/subjects/new"><PrimaryButton><span className="inline-flex items-center gap-2"><PlusCircle className="h-4 w-4" /> Add Subject</span></PrimaryButton></Link>}
+        actions={canCreateScopedContent ? <Link to="/subjects/new"><PrimaryButton><span className="inline-flex items-center gap-2"><PlusCircle className="h-4 w-4" /> Add Subject</span></PrimaryButton></Link> : null}
       />
 
-      <div className="glass-panel grid gap-4 p-6 md:grid-cols-2">
-        <SelectInput value={filters.classId} onChange={(event) => setFilters((current) => ({ ...current, classId: event.target.value, sectionId: '' }))} options={buildOptions(classes)} placeholder="Filter by class" />
-        <SelectInput value={filters.sectionId} onChange={(event) => setFilters((current) => ({ ...current, sectionId: event.target.value }))} options={buildOptions(sections)} placeholder="Filter by section" />
-      </div>
+      <ClassSectionFilter className="md:grid-cols-2" />
 
       {loading ? <Loader label="Loading subjects..." /> : null}
       {!loading && !list.length ? <EmptyState title="No subjects found" message="Create a subject to map teachers and academic planning to sections." /> : null}
