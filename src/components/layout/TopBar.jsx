@@ -1,4 +1,4 @@
-import { Bell, Menu, Search } from 'lucide-react';
+import { Bell, Menu } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 
@@ -42,14 +42,6 @@ const TopBar = ({ title = 'Dashboard' }) => {
       </div>
 
       <div className="flex items-center gap-3">
-        <div className="hidden items-center gap-2 rounded-full bg-white/70 px-4 py-3 shadow-glass-md md:flex">
-          <Search className="h-4 w-4 text-on-surface-variant" />
-          <input
-            className="w-48 bg-transparent text-sm text-on-surface outline-none placeholder:text-on-surface-variant"
-            placeholder="Search modules"
-          />
-        </div>
-
         <div className="relative">
           <button
             type="button"

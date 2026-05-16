@@ -87,6 +87,12 @@ const Attendance = () => {
     [records]
   );
 
+  const selectedClass = useMemo(
+    () => (classId ? classes.find((c) => c._id === classId) ?? null : null),
+    [classes, classId]
+  );
+  const classHasSections = selectedClass?.hasSections === true;
+
   const classOptions = useMemo(() => {
     if (role === 'admin') return buildOptions(classes);
     const allowedClassIds = new Set(
@@ -98,13 +104,16 @@ const Attendance = () => {
   const singleSectionTeacher = role === 'teacher' && (profile?.classTeacherSections || []).length === 1;
 
   const dateInput = (
-    <input
-      className="input-field"
-      type="date"
-      value={date}
-      max={today}
-      onChange={(e) => setParams({ date: e.target.value })}
-    />
+    <div className="flex flex-col gap-1.5">
+      <label className="text-xs font-bold uppercase tracking-widest text-on-surface-variant">Date</label>
+      <input
+        className="input-field"
+        type="date"
+        value={date}
+        max={today}
+        onChange={(e) => setParams({ date: e.target.value })}
+      />
+    </div>
   );
 
   const markedCount = students.filter((s) => savedStudentIds.has(s._id?.toString())).length;
@@ -133,8 +142,10 @@ const Attendance = () => {
       {loading ? <Loader label="Loading attendance..." /> : null}
 
       {!loading && mode === 'mark' && role !== 'student' ? (
-        !sectionId ? (
-          <EmptyState title="No section selected" message="Choose a class and section above to mark attendance." />
+        !classId ? (
+          <EmptyState title="No class selected" message="Choose a class above to mark attendance." />
+        ) : classHasSections && !sectionId ? (
+          <EmptyState title="No section selected" message="Choose a section above to mark attendance." />
         ) : !students.length ? (
           <EmptyState title="No students" message="No active students found in this section." />
         ) : (

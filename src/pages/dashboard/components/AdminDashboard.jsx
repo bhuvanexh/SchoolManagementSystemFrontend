@@ -8,9 +8,9 @@ import { formatDate } from '../../../utils/formatters';
 const AdminDashboard = ({ data = {} }) => (
   <div className="space-y-6">
     <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-      <StatCard icon={Users} value={data?.totals?.teachers ?? 0} label="Teachers" color="primary" />
-      <StatCard icon={GraduationCap} value={data?.totals?.students ?? 0} label="Students" color="secondary" />
-      <StatCard icon={School} value={data?.totals?.classes ?? 0} label="Classes" color="tertiary" />
+      <StatCard icon={Users} value={data?.totalTeachers ?? 0} label="Teachers" color="primary" />
+      <StatCard icon={GraduationCap} value={data?.totalStudents ?? 0} label="Students" color="secondary" />
+      <StatCard icon={School} value={data?.totalClasses ?? 0} label="Classes" color="tertiary" />
       <StatCard icon={Calendar} value={data?.upcomingEvents?.length ?? 0} label="Upcoming Events" color="primary" />
     </div>
 

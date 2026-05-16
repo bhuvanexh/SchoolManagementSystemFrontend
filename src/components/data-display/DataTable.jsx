@@ -12,8 +12,8 @@ const DataTable = ({ columns = [], data = [] }) => {
   });
 
   return (
-    <div className="glass-panel overflow-hidden">
-      <div className="custom-scrollbar overflow-x-auto">
+    <div className="glass-panel overflow-hidden p-3">
+      <div className="custom-scrollbar overflow-x-auto rounded-glass-sm">
         <table className="min-w-full divide-y divide-white/40">
           <thead className="bg-white/40">
             {table.getHeaderGroups().map((headerGroup) => (

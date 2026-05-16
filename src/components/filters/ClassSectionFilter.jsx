@@ -68,12 +68,15 @@ const ClassSectionFilter = ({
         />
       ) : null}
       {showSearch ? (
-        <SearchInput
-          value={params.search}
-          onChange={(e) => setParams({ search: e.target.value })}
-          placeholder={searchPlaceholder}
-          disabled={disabled}
-        />
+        <div className="flex flex-col gap-1.5">
+          <label className="text-xs font-bold uppercase tracking-widest text-on-surface-variant">Search</label>
+          <SearchInput
+            value={params.search}
+            onChange={(e) => setParams({ search: e.target.value })}
+            placeholder={searchPlaceholder}
+            disabled={disabled}
+          />
+        </div>
       ) : null}
       {extra}
     </div>

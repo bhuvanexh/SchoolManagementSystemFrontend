@@ -10,10 +10,16 @@ import ConfirmDialog from '../../components/feedback/ConfirmDialog';
 import EmptyState from '../../components/feedback/EmptyState';
 import Loader from '../../components/feedback/Loader';
 import SelectInput from '../../components/inputs/SelectInput';
+import Tooltip from '../../components/data-display/Tooltip';
 import PageHeader from '../../components/layout/PageHeader';
 import PageWrapper from '../../components/layout/PageWrapper';
+import useFilterParams from '../../hooks/useFilterParams';
 import usePermission from '../../hooks/usePermission';
+import { fetchClasses } from '../../redux/actions/classActions';
+import { fetchSectionsByClass } from '../../redux/actions/sectionActions';
+import { clearSections } from '../../redux/slices/sectionSlice';
 import { fetchSubjects } from '../../redux/actions/subjectActions';
+import { clearSubjects } from '../../redux/slices/subjectSlice';
 import { deleteTest, fetchTests, publishTest } from '../../redux/actions/testActions';
 import { buildOptions } from '../../utils/helpers';
 import { formatDate } from '../../utils/formatters';
@@ -21,28 +27,53 @@ import { formatDate } from '../../utils/formatters';
 const Tests = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  const [params, setParams] = useFilterParams();
   const role = useSelector((state) => state.auth.user?.role);
-  const subjects = useSelector((state) => state.subjects.list);
+  const classes = useSelector((state) => state.classes.list);
   const sections = useSelector((state) => state.sections.list);
+  const subjects = useSelector((state) => state.subjects.list);
   const list = useSelector((state) => state.tests.list);
   const loading = useSelector((state) => state.tests.loading);
   const { isAdmin, isSubjectTeacherOf } = usePermission();
-  const [filters, setFilters] = useState({ subjectId: '', sectionId: '' });
   const [confirm, setConfirm] = useState({ type: null, id: null });
 
+  const selectedClass = useMemo(
+    () => (params.classId ? classes.find((c) => c._id === params.classId) ?? null : null),
+    [classes, params.classId]
+  );
+  const classHasSections = selectedClass?.hasSections === true;
+
   useEffect(() => {
-    dispatch(fetchSubjects({}));
+    dispatch(fetchClasses());
   }, [dispatch]);
 
   useEffect(() => {
-    dispatch(fetchTests(filters));
-  }, [dispatch, filters]);
+    if (params.classId && classHasSections) {
+      dispatch(fetchSectionsByClass(params.classId));
+    }
+  }, [dispatch, params.classId, classHasSections]);
+
+  useEffect(() => {
+    if (classHasSections && params.sectionId) {
+      dispatch(fetchSubjects({ sectionId: params.sectionId }));
+    } else if (!classHasSections && params.classId) {
+      dispatch(fetchSubjects({ classId: params.classId }));
+    } else {
+      dispatch(clearSubjects());
+    }
+  }, [dispatch, classHasSections, params.classId, params.sectionId]);
+
+  useEffect(() => {
+    if (params.classId) {
+      dispatch(fetchTests({ classId: params.classId, sectionId: params.sectionId, subjectId: params.subjectId }));
+    }
+  }, [dispatch, params.classId, params.sectionId, params.subjectId]);
 
   const columns = useMemo(
     () => [
       { header: 'Test Name', accessorKey: 'name' },
-      { header: 'Subject', cell: ({ row }) => row.original.subject?.name || '—' },
-      { header: 'Section', cell: ({ row }) => row.original.section?.name || '—' },
+      { header: 'Subject', cell: ({ row }) => row.original.subjectId?.name || '—' },
+      { header: 'Section', cell: ({ row }) => row.original.sectionId?.name || '—' },
       { header: 'Date', cell: ({ row }) => formatDate(row.original.date || row.original.testDate) },
       { header: 'Max Score', accessorKey: 'maxScore' },
       { header: 'Published', cell: ({ row }) => <Badge tone={row.original.isPublished ? 'success' : 'neutral'}>{row.original.isPublished ? 'Yes' : 'No'}</Badge> },
@@ -50,10 +81,18 @@ const Tests = () => {
         header: 'Actions',
         cell: ({ row }) => (
           <div className="flex gap-2">
-            {role !== 'student' && (isAdmin || isSubjectTeacherOf(row.original.subject?._id || row.original.subjectId)) ? <button type="button" onClick={() => navigate(`/tests/${row.original._id}`)} className="rounded-full bg-white p-2 text-secondary"><Pencil className="h-4 w-4" /></button> : null}
-            {role !== 'student' && (isAdmin || isSubjectTeacherOf(row.original.subject?._id || row.original.subjectId)) ? <button type="button" onClick={() => navigate(`/tests/${row.original._id}/grade`)} className="rounded-full bg-white p-2 text-primary"><PenLine className="h-4 w-4" /></button> : null}
-            {role !== 'student' && !row.original.isPublished && (isAdmin || isSubjectTeacherOf(row.original.subject?._id || row.original.subjectId)) ? <button type="button" onClick={() => setConfirm({ type: 'publish', id: row.original._id })} className="rounded-full bg-white p-2 text-tertiary"><Send className="h-4 w-4" /></button> : null}
-            {role !== 'student' && !row.original.isPublished && (isAdmin || isSubjectTeacherOf(row.original.subject?._id || row.original.subjectId)) ? <button type="button" onClick={() => setConfirm({ type: 'delete', id: row.original._id })} className="rounded-full bg-white p-2 text-error"><Trash2 className="h-4 w-4" /></button> : null}
+            {role !== 'student' && (isAdmin || isSubjectTeacherOf(row.original.subjectId?._id || row.original.subjectId))
+              ? <Tooltip text="Edit test"><button type="button" onClick={() => navigate(`/tests/${row.original._id}`)} className="rounded-full bg-white p-2 text-secondary"><Pencil className="h-4 w-4" /></button></Tooltip>
+              : null}
+            {role !== 'student' && (isAdmin || isSubjectTeacherOf(row.original.subjectId?._id || row.original.subjectId))
+              ? <Tooltip text="Grade students"><button type="button" onClick={() => navigate(`/tests/${row.original._id}/grade`)} className="rounded-full bg-white p-2 text-primary"><PenLine className="h-4 w-4" /></button></Tooltip>
+              : null}
+            {role !== 'student' && !row.original.isPublished && (isAdmin || isSubjectTeacherOf(row.original.subjectId?._id || row.original.subjectId))
+              ? <Tooltip text="Publish results"><button type="button" onClick={() => setConfirm({ type: 'publish', id: row.original._id })} className="rounded-full bg-white p-2 text-tertiary"><Send className="h-4 w-4" /></button></Tooltip>
+              : null}
+            {role !== 'student' && !row.original.isPublished && (isAdmin || isSubjectTeacherOf(row.original.subjectId?._id || row.original.subjectId))
+              ? <Tooltip text="Delete test"><button type="button" onClick={() => setConfirm({ type: 'delete', id: row.original._id })} className="rounded-full bg-white p-2 text-error"><Trash2 className="h-4 w-4" /></button></Tooltip>
+              : null}
           </div>
         ),
       },
@@ -61,17 +100,51 @@ const Tests = () => {
     [isAdmin, isSubjectTeacherOf, navigate, role]
   );
 
+  const filterCols = classHasSections ? 'md:grid-cols-3' : 'md:grid-cols-2';
+
   return (
     <PageWrapper>
       <PageHeader
         title="Tests & Results"
         description="Create assessments, collect marks, publish results, and track performance."
-        actions={role !== 'student' && (isAdmin || subjects.some((subject) => isSubjectTeacherOf(subject._id))) ? <Link to="/tests/new"><PrimaryButton><span className="inline-flex items-center gap-2"><PlusCircle className="h-4 w-4" /> Create Test</span></PrimaryButton></Link> : null}
+        actions={role !== 'student' && (isAdmin || subjects.some((s) => isSubjectTeacherOf(s._id)))
+          ? <Link to="/tests/new"><PrimaryButton><span className="inline-flex items-center gap-2"><PlusCircle className="h-4 w-4" /> Create Test</span></PrimaryButton></Link>
+          : null}
       />
 
-      <div className="glass-panel grid gap-4 p-6 md:grid-cols-2">
-        <SelectInput label="Subject" value={filters.subjectId} onChange={(value) => setFilters((current) => ({ ...current, subjectId: value }))} options={buildOptions(subjects)} placeholder="All subjects" />
-        <SelectInput label="Section" value={filters.sectionId} onChange={(value) => setFilters((current) => ({ ...current, sectionId: value }))} options={buildOptions(sections)} placeholder="All sections" />
+      <div className={`glass-panel grid gap-4 p-6 ${filterCols}`}>
+        <SelectInput
+          label="Class"
+          value={params.classId}
+          onChange={(value) => {
+            dispatch(clearSections());
+            dispatch(clearSubjects());
+            setParams({ classId: value, sectionId: '', subjectId: '' });
+          }}
+          options={buildOptions(classes)}
+          placeholder="All classes"
+        />
+        {classHasSections ? (
+          <SelectInput
+            label="Section"
+            value={params.sectionId}
+            onChange={(value) => {
+              dispatch(clearSubjects());
+              setParams({ sectionId: value, subjectId: '' });
+            }}
+            options={buildOptions(sections)}
+            placeholder="All sections"
+            disabled={!params.classId}
+          />
+        ) : null}
+        <SelectInput
+          label="Subject"
+          value={params.subjectId}
+          onChange={(value) => setParams({ subjectId: value })}
+          options={buildOptions(subjects)}
+          placeholder="All subjects"
+          disabled={classHasSections ? !params.sectionId : !params.classId}
+        />
       </div>
 
       {loading ? <Loader label="Loading tests..." /> : null}

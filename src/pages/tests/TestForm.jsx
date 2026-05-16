@@ -15,6 +15,7 @@ import { fetchClasses } from '../../redux/actions/classActions';
 import { fetchSectionsByClass } from '../../redux/actions/sectionActions';
 import { clearSections } from '../../redux/slices/sectionSlice';
 import { fetchSubjects } from '../../redux/actions/subjectActions';
+import { clearSubjects } from '../../redux/slices/subjectSlice';
 import { createTest, fetchTestById, updateTest } from '../../redux/actions/testActions';
 import { buildOptions } from '../../utils/helpers';
 import { testSchema } from '../../validation/testSchema';
@@ -63,6 +64,7 @@ const TestForm = () => {
   useEffect(() => {
     if (isResettingRef.current) return;
     dispatch(clearSections());
+    dispatch(clearSubjects());
     setValue('sectionId', '');
     setValue('subjectId', '');
   }, [classId]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -70,6 +72,7 @@ const TestForm = () => {
   // When section changes (user interaction), clear subject
   useEffect(() => {
     if (isResettingRef.current) return;
+    dispatch(clearSubjects());
     setValue('subjectId', '');
   }, [sectionId]); // eslint-disable-line react-hooks/exhaustive-deps
 

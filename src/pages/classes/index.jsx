@@ -1,7 +1,7 @@
 import { Eye, Pencil, PlusCircle, School2 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 
 import SecondaryButton from '../../components/buttons/SecondaryButton';
 import PrimaryButton from '../../components/buttons/PrimaryButton';
@@ -19,16 +19,41 @@ import { fetchSectionsByClass } from '../../redux/actions/sectionActions';
 const Classes = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const scope = searchParams.get('scope');
   const { list, loading } = useSelector((state) => state.classes);
   const sections = useSelector((state) => state.sections.list);
   const sectionsLoading = useSelector((state) => state.sections.loading);
   const userRole = useSelector((state) => state.auth.user?.role);
+  const profile = useSelector((state) => state.auth.profile);
   const [deleteId, setDeleteId] = useState(null);
   const [sectionsClass, setSectionsClass] = useState(null);
 
+  const isMyScope = scope === 'my' && userRole === 'teacher';
+
   useEffect(() => {
-    dispatch(fetchClasses());
-  }, [dispatch]);
+    if (!isMyScope) dispatch(fetchClasses());
+  }, [dispatch, isMyScope]);
+
+  const myAssignments = useMemo(() => {
+    if (!isMyScope) return null;
+    return [
+      ...(profile?.classTeacherSections || []).map((s) => ({
+        id: s.sectionId,
+        label: `Class ${s.className} — Section ${s.sectionName}`,
+        sectionId: s.sectionId,
+        classId: s.classId,
+        type: 'Section Teacher',
+      })),
+      ...(profile?.classTeacherClasses || []).map((c) => ({
+        id: c.classId,
+        label: `Class ${c.className}`,
+        sectionId: null,
+        classId: c.classId,
+        type: 'Class Teacher',
+      })),
+    ];
+  }, [isMyScope, profile]);
 
   const handleViewSections = (cls) => {
     setSectionsClass(cls);
@@ -76,18 +101,56 @@ const Classes = () => {
   return (
     <PageWrapper>
       <PageHeader
-        title="Classes"
-        description="Track class structures, section setup, staffing, and enrollment."
+        title={isMyScope ? 'My Classes' : 'Classes'}
+        description={
+          isMyScope
+            ? 'Classes and sections where you are assigned as class teacher.'
+            : 'Track class structures, section setup, staffing, and enrollment.'
+        }
         actions={
-          userRole === 'admin' ? (
+          !isMyScope && userRole === 'admin' ? (
             <Link to="/classes/new"><PrimaryButton><span className="inline-flex items-center gap-2"><PlusCircle className="h-4 w-4" /> Add Class</span></PrimaryButton></Link>
           ) : null
         }
       />
 
-      {loading ? <Loader label="Loading classes..." /> : null}
-      {!loading && !list.length ? <EmptyState title="No classes found" message="Create your first class to begin managing sections and students." /> : null}
-      {!loading && list.length ? <DataTable columns={columns} data={list} /> : null}
+      {isMyScope ? (
+        <section className="glass-panel p-6">
+          {!myAssignments?.length ? (
+            <EmptyState title="No assignments" message="You have not been assigned as class teacher of any class or section yet." />
+          ) : (
+            <div className="grid gap-3 sm:grid-cols-2">
+              {myAssignments.map((item) => (
+                <div key={item.id} className="flex items-center justify-between rounded-glass-sm bg-white/50 p-4">
+                  <div>
+                    <p className="font-semibold text-on-surface">{item.label}</p>
+                    <p className="mt-1 text-xs font-bold uppercase tracking-widest text-on-surface-variant">{item.type}</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      navigate(
+                        item.sectionId
+                          ? `/students?sectionId=${item.sectionId}`
+                          : `/students?classId=${item.classId}`
+                      )
+                    }
+                    className="btn-secondary text-xs"
+                  >
+                    View Students
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+      ) : (
+        <>
+          {loading ? <Loader label="Loading classes..." /> : null}
+          {!loading && !list.length ? <EmptyState title="No classes found" message="Create your first class to begin managing sections and students." /> : null}
+          {!loading && list.length ? <DataTable columns={columns} data={list} /> : null}
+        </>
+      )}
 
       <Modal
         isOpen={Boolean(sectionsClass)}

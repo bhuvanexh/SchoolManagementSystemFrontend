@@ -1,4 +1,5 @@
 import { Pencil, PlusCircle, Trash2 } from 'lucide-react';
+import Tooltip from '../../components/data-display/Tooltip';
 import { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { Link, useNavigate } from 'react-router-dom';
@@ -47,8 +48,8 @@ const Notices = () => {
                 </div>
                 <div className="flex items-center gap-2">
                   <Badge tone={notice.isPriority ? 'error' : 'primary'}>{notice.visibility || 'notice'}</Badge>
-                  {canManageNotice(notice) ? <button type="button" onClick={() => navigate(`/notices/${notice._id}/edit`)} className="rounded-full bg-white p-2 text-secondary"><Pencil className="h-4 w-4" /></button> : null}
-                  {canManageNotice(notice) ? <button type="button" onClick={() => setDeleteId(notice._id)} className="rounded-full bg-white p-2 text-error"><Trash2 className="h-4 w-4" /></button> : null}
+                  {canManageNotice(notice) ? <Tooltip text="Edit notice"><button type="button" onClick={() => navigate(`/notices/${notice._id}/edit`)} className="rounded-full bg-white p-2 text-secondary"><Pencil className="h-4 w-4" /></button></Tooltip> : null}
+                  {canManageNotice(notice) ? <Tooltip text="Delete notice"><button type="button" onClick={() => setDeleteId(notice._id)} className="rounded-full bg-white p-2 text-error"><Trash2 className="h-4 w-4" /></button></Tooltip> : null}
                 </div>
               </div>
               <p className="mt-4 text-sm leading-7 text-on-surface-variant">{truncate(notice.content, 220)}</p>

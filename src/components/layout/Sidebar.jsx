@@ -1,12 +1,20 @@
 import { LogOut } from 'lucide-react';
-import { NavLink } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { useDispatch } from 'react-redux';
 
 import { logout } from '../../redux/slices/authSlice';
 import { navConfig } from '../../utils/roleNavConfig';
 
+const isItemActive = (item, location) => {
+  if (location.pathname !== item.path) return false;
+  const scopeParam = new URLSearchParams(location.search).get('scope');
+  const itemScope = item.search ? new URLSearchParams(item.search).get('scope') : null;
+  return scopeParam === itemScope;
+};
+
 const Sidebar = ({ role = 'admin' }) => {
   const dispatch = useDispatch();
+  const location = useLocation();
   const items = navConfig[role] || [];
 
   return (
@@ -17,25 +25,33 @@ const Sidebar = ({ role = 'admin' }) => {
         <p className="mt-2 text-sm text-white/80">Coordinated daily operations for admins, teachers, and students.</p>
       </div>
 
-      <nav className="mt-8 flex flex-1 flex-col gap-2">
-        {items.map((item) => {
+      <nav className="mt-8 flex flex-1 flex-col gap-1">
+        {items.map((item, idx) => {
+          if (item.type === 'divider') {
+            return (
+              <div key={`divider-${idx}`} className="mb-1 mt-4 px-1">
+                <p className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/50">{item.label}</p>
+              </div>
+            );
+          }
+
           const Icon = item.icon;
+          const active = isItemActive(item, location);
+          const to = item.search ? `${item.path}${item.search}` : item.path;
 
           return (
-            <NavLink
-              key={item.path}
-              to={item.path}
-              className={({ isActive }) =>
-                `flex items-center gap-3 rounded-glass-sm px-4 py-3 text-sm font-semibold transition ${
-                  isActive
-                    ? 'bg-primary text-white shadow-primary-glow-xs'
-                    : 'text-on-surface-variant hover:bg-white/80 hover:text-on-surface'
-                }`
-              }
+            <Link
+              key={`${item.path}-${item.search || 'default'}`}
+              to={to}
+              className={`flex items-center gap-3 rounded-glass-sm px-4 py-3 text-sm font-semibold transition ${
+                active
+                  ? 'bg-primary text-white shadow-primary-glow-xs'
+                  : 'text-on-surface-variant hover:bg-white/80 hover:text-on-surface'
+              }`}
             >
               <Icon className="h-4 w-4" />
               {item.label}
-            </NavLink>
+            </Link>
           );
         })}
       </nav>

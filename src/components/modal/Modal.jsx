@@ -1,3 +1,5 @@
+import { X } from 'lucide-react';
+
 const Modal = ({ isOpen, title, children, footer, onClose }) => {
   if (!isOpen) return null;
 
@@ -5,15 +7,13 @@ const Modal = ({ isOpen, title, children, footer, onClose }) => {
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 p-4">
       <div className="glass-panel w-full max-w-2xl p-6">
         <div className="flex items-start justify-between gap-4">
-          <div>
-            <h2 className="text-xl font-bold text-on-surface">{title}</h2>
-          </div>
+          <h2 className="text-xl font-bold text-on-surface">{title}</h2>
           <button
             type="button"
             onClick={onClose}
-            className="rounded-full px-3 py-1 text-sm font-medium text-on-surface-variant transition hover:bg-white/70"
+            className="rounded-full p-1.5 text-on-surface-variant transition hover:bg-white/70"
           >
-            Close
+            <X className="h-4 w-4" />
           </button>
         </div>
         <div className="mt-6">{children}</div>
