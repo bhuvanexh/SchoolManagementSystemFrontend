@@ -24,7 +24,9 @@ const StudentDetail = () => {
   const current = useSelector((state) => state.students.current);
   const summary = useSelector((state) => state.students.summary);
   const attendance = useSelector((state) => state.attendance.studentHistory);
+  const attendanceLoading = useSelector((state) => state.attendance.loading);
   const results = useSelector((state) => state.results.studentResults);
+  const resultsLoading = useSelector((state) => state.results.loading);
   const loading = useSelector((state) => state.students.loading);
   const [activeTab, setActiveTab] = useState('attendance');
   const [tabsLoaded, setTabsLoaded] = useState({ attendance: false, results: false });
@@ -54,6 +56,7 @@ const StudentDetail = () => {
   if (loading && !current) return <Loader label="Loading student details..." />;
 
   const syllabusItems = summary?.syllabusItems || [];
+  const summaryLoading = !summary;
 
   return (
     <PageWrapper>
@@ -92,7 +95,9 @@ const StudentDetail = () => {
       {activeTab === 'attendance' ? (
         <section className="glass-panel p-6">
           <h2 className="text-xl font-bold text-on-surface">Attendance History</h2>
-          {attendance.length === 0 ? (
+          {attendanceLoading ? (
+            <Loader label="Loading attendance..." />
+          ) : attendance.length === 0 ? (
             <p className="mt-4 text-sm text-on-surface-variant">No attendance records found.</p>
           ) : (
             <div className="mt-4 space-y-2">
@@ -109,20 +114,32 @@ const StudentDetail = () => {
         </section>
       ) : null}
 
-      {activeTab === 'results' ? <ResultView results={results} /> : null}
+      {activeTab === 'results' ? (
+        resultsLoading ? (
+          <section className="glass-panel p-6"><Loader label="Loading results..." /></section>
+        ) : (
+          <ResultView results={results} />
+        )
+      ) : null}
 
       {activeTab === 'syllabus' ? (
         <section className="glass-panel p-6">
           <h2 className="text-xl font-bold text-on-surface">Syllabus</h2>
-          {syllabusItems.length === 0 ? (
+          {summaryLoading ? (
+            <Loader label="Loading syllabus..." />
+          ) : syllabusItems.length === 0 ? (
             <EmptyState title="No syllabus items" message="Syllabus topics will appear here once added." />
           ) : (
             <div className="mt-4 space-y-3">
               {syllabusItems.map((item) => (
-                <div key={item._id} className="flex items-center justify-between rounded-glass-sm bg-white/50 px-4 py-3">
-                  <div>
+                <div key={item._id} className="flex items-center justify-between gap-3 rounded-glass-sm bg-white/50 px-4 py-3">
+                  <div className="min-w-0">
                     <p className={`font-semibold text-on-surface ${item.status === 'completed' ? 'line-through opacity-60' : ''}`}>{item.topic}</p>
-                    <p className="mt-0.5 text-sm text-on-surface-variant">{item.subjectId?.name}</p>
+                    <p className="mt-0.5 text-sm text-on-surface-variant">
+                      {item.subjectId?.name}
+                      {item.estimatedPeriods ? ` · ${item.estimatedPeriods} ${item.estimatedPeriods === 1 ? 'lecture' : 'lectures'}` : ''}
+                    </p>
+                    {item.description ? <p className="mt-1 text-xs text-on-surface-variant/80">{item.description}</p> : null}
                   </div>
                   <Badge tone={item.status === 'completed' ? 'success' : 'neutral'}>{item.status === 'completed' ? 'Done' : 'Pending'}</Badge>
                 </div>

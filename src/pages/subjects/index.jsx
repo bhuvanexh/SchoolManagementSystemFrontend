@@ -44,8 +44,16 @@ const Subjects = () => {
     () => [
       { header: 'Subject Name', accessorKey: 'name' },
       { header: 'Core Subject', cell: ({ row }) => row.original.coreSubjectId?.name || '—' },
-      { header: 'Class', cell: ({ row }) => row.original.classId?.name || '—' },
-      { header: 'Section', cell: ({ row }) => row.original.sectionId?.name || '—' },
+      {
+        header: 'Class',
+        cell: ({ row }) => {
+          const className = row.original.classId?.name;
+          const sectionName = row.original.sectionId?.name;
+          if (!className) return '—';
+          if (!sectionName || sectionName === 'Default') return className;
+          return `${className}-${sectionName}`;
+        },
+      },
       { header: 'Subject Teacher', cell: ({ row }) => row.original.subjectTeacherId?.name || '—' },
       { header: 'Periods/Week', accessorKey: 'periodsPerWeek' },
       {

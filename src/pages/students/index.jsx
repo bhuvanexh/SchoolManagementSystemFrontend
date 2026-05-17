@@ -54,7 +54,16 @@ const Students = () => {
       { header: 'Student Name', accessorKey: 'name' },
       { header: 'Parent Name', accessorKey: 'parentName' },
       { header: 'Parent Contact', accessorKey: 'parentContact' },
-      { header: 'Section', cell: ({ row }) => row.original.sectionId?.name || '—' },
+      {
+        header: 'Class',
+        cell: ({ row }) => {
+          const className = row.original.sectionId?.classId?.name;
+          const sectionName = row.original.sectionId?.name;
+          if (!className) return '—';
+          if (!sectionName || sectionName === 'Default') return className;
+          return `${className}-${sectionName}`;
+        },
+      },
       { header: 'Status', cell: ({ row }) => row.original.isActive === false ? 'Inactive' : 'Active' },
       {
         header: 'Actions',

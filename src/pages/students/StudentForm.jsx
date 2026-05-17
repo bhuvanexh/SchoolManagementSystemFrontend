@@ -71,10 +71,10 @@ const StudentForm = () => {
   }, [dispatch, id, isEdit]);
 
   useEffect(() => {
-    if (classId && classHasSections) {
+    if (classId) {
       dispatch(fetchSectionsByClass(classId));
     }
-  }, [classId, classHasSections, dispatch]);
+  }, [classId, dispatch]);
 
   // When class changes (user interaction), clear section
   useEffect(() => {
@@ -82,6 +82,14 @@ const StudentForm = () => {
     dispatch(clearSections());
     setValue('sectionId', '');
   }, [classId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // For classes without sections, auto-pick the (single default) section once it loads
+  useEffect(() => {
+    if (!classId || classHasSections) return;
+    if (sections.length > 0) {
+      setValue('sectionId', sections[0]._id, { shouldValidate: true });
+    }
+  }, [classId, classHasSections, sections, setValue]);
 
   useEffect(() => {
     if (isEdit && current?._id === id) {

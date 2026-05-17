@@ -11,6 +11,9 @@ import { createEntitySlice } from '../sliceFactory';
 const slice = createEntitySlice({
   name: 'tests',
   initialState: { list: [], current: null, loading: false, error: null },
+  reducers: {
+    clearTests: (state) => { state.list = []; state.current = null; },
+  },
   thunkMap: {
     fetchTests: {
       thunk: fetchTests,
@@ -52,4 +55,5 @@ const slice = createEntitySlice({
   },
 });
 
+export const { clearTests } = slice.actions;
 export default slice.reducer;

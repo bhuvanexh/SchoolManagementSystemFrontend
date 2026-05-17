@@ -10,6 +10,7 @@ import PageWrapper from '../../components/layout/PageWrapper';
 import useFilterParams from '../../hooks/useFilterParams';
 import { fetchSectionAttendance, fetchStudentAttendance, markAttendance } from '../../redux/actions/attendanceActions';
 import { fetchClasses } from '../../redux/actions/classActions';
+import { fetchSectionsByClass } from '../../redux/actions/sectionActions';
 import { fetchStudents } from '../../redux/actions/studentActions';
 import { buildOptions } from '../../utils/helpers';
 import AttendanceReport from './components/AttendanceReport';
@@ -22,6 +23,7 @@ const Attendance = () => {
   const role = useSelector((state) => state.auth.user?.role);
   const profile = useSelector((state) => state.auth.profile);
   const classes = useSelector((state) => state.classes.list);
+  const sections = useSelector((state) => state.sections.list);
   const students = useSelector((state) => state.students.list);
   const records = useSelector((state) => state.attendance.records);
   const studentHistory = useSelector((state) => state.attendance.studentHistory);
@@ -38,6 +40,21 @@ const Attendance = () => {
   const month = String(Number(dateMonth));
   const year = dateYear;
 
+  const selectedClass = useMemo(
+    () => (classId ? classes.find((c) => c._id === classId) ?? null : null),
+    [classes, classId]
+  );
+  const classHasSections = selectedClass?.hasSections === true;
+
+  // Resolve the effective sectionId: for classes without sections, use the auto-default section
+  const effectiveSectionId = useMemo(() => {
+    if (sectionId) return sectionId;
+    if (classId && selectedClass && !selectedClass.hasSections && sections.length > 0) {
+      return sections[0]._id;
+    }
+    return '';
+  }, [sectionId, classId, selectedClass, sections]);
+
   useEffect(() => {
     if (role !== 'student') dispatch(fetchClasses());
   }, [dispatch, role]);
@@ -52,13 +69,18 @@ const Attendance = () => {
     }
   }, [profile?.classTeacherSections, role]);
 
-  // Fetch students + section attendance whenever section or date changes
+  // Fetch sections whenever class changes so we can resolve the default section
   useEffect(() => {
-    if (sectionId) {
-      dispatch(fetchStudents({ sectionId }));
-      dispatch(fetchSectionAttendance({ sectionId, date, month, year }));
+    if (classId) dispatch(fetchSectionsByClass(classId));
+  }, [classId, dispatch]);
+
+  // Fetch students + section attendance whenever effective section or date changes
+  useEffect(() => {
+    if (effectiveSectionId) {
+      dispatch(fetchStudents({ sectionId: effectiveSectionId }));
+      dispatch(fetchSectionAttendance({ sectionId: effectiveSectionId, date, month, year }));
     }
-  }, [sectionId, date, dispatch]);
+  }, [effectiveSectionId, date, dispatch]);
 
   // Student role: fetch own attendance when month/year changes
   useEffect(() => {
@@ -86,12 +108,6 @@ const Attendance = () => {
     () => new Set(records.map((r) => (r.studentId?._id || r.studentId)?.toString())),
     [records]
   );
-
-  const selectedClass = useMemo(
-    () => (classId ? classes.find((c) => c._id === classId) ?? null : null),
-    [classes, classId]
-  );
-  const classHasSections = selectedClass?.hasSections === true;
 
   const classOptions = useMemo(() => {
     if (role === 'admin') return buildOptions(classes);
@@ -147,7 +163,7 @@ const Attendance = () => {
         ) : classHasSections && !sectionId ? (
           <EmptyState title="No section selected" message="Choose a section above to mark attendance." />
         ) : !students.length ? (
-          <EmptyState title="No students" message="No active students found in this section." />
+          <EmptyState title="No students" message="No active students found in this class." />
         ) : (
           <>
             {allMarked ? (
@@ -168,11 +184,11 @@ const Attendance = () => {
             <div className="flex justify-end">
               <PrimaryButton
                 type="button"
-                disabled={loading}
+                disabled={loading || !effectiveSectionId}
                 onClick={() =>
                   dispatch(
                     markAttendance({
-                      sectionId,
+                      sectionId: effectiveSectionId,
                       date,
                       records: students.map((student) => ({
                         studentId: student._id,

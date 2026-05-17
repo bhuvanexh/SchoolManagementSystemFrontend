@@ -88,13 +88,17 @@ const TestForm = () => {
   useEffect(() => {
     if (isEdit && current?._id === id) {
       isResettingRef.current = true;
+      const classIdValue = typeof current.classId === 'object' ? current.classId?._id : current.classId;
+      const sectionIdValue = typeof current.sectionId === 'object' ? current.sectionId?._id : current.sectionId;
+      const subjectIdValue = typeof current.subjectId === 'object' ? current.subjectId?._id : current.subjectId;
+      const dateValue = current.testDate || current.date || '';
       reset({
-        classId: current.classId?._id || current.class?._id || current.classId || '',
-        sectionId: current.sectionId?._id || current.section?._id || current.sectionId || '',
-        name: current.name,
-        subjectId: current.subjectId?._id || current.subject?._id || current.subjectId || '',
-        testDate: (current.date || current.testDate || '').slice(0, 10),
-        maxScore: current.maxScore,
+        classId: classIdValue || '',
+        sectionId: sectionIdValue || '',
+        name: current.name || '',
+        subjectId: subjectIdValue || '',
+        testDate: dateValue ? String(dateValue).slice(0, 10) : '',
+        maxScore: current.maxScore ?? 100,
       });
       setTimeout(() => { isResettingRef.current = false; }, 0);
     }

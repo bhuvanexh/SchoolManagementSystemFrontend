@@ -17,22 +17,27 @@ const AttendanceSheet = ({ students = [], values = {}, savedStudentIds = new Set
         <tbody className="divide-y divide-white/30 bg-white/20">
           {students.map((student) => {
             const isSaved = savedStudentIds.has(student._id?.toString());
+            const selected = values[student._id];
             return (
               <tr key={student._id} className={isSaved ? 'bg-white/10' : ''}>
                 <td className="px-4 py-3 text-sm text-on-surface">{student.rollNumber}</td>
                 <td className="px-4 py-3 text-sm text-on-surface">{student.name}</td>
                 <td className="px-4 py-3">
                   <div className="flex flex-wrap gap-2">
-                    {ATTENDANCE_STATUSES.map((status) => (
-                      <button
-                        key={status.value}
-                        type="button"
-                        onClick={() => onChange(student._id, status.value)}
-                        className={values[student._id] === status.value ? 'btn-primary !px-4 !py-2' : 'btn-secondary !px-4 !py-2'}
-                      >
-                        {status.label}
-                      </button>
-                    ))}
+                    {ATTENDANCE_STATUSES.map((status) => {
+                      const isActive = selected === status.value;
+                      const dim = isSaved && !isActive;
+                      return (
+                        <button
+                          key={status.value}
+                          type="button"
+                          onClick={() => onChange(student._id, status.value)}
+                          className={`${isActive ? 'btn-primary' : 'btn-secondary'} !px-4 !py-2 ${dim ? 'opacity-40 hover:opacity-100' : ''}`}
+                        >
+                          {status.label}
+                        </button>
+                      );
+                    })}
                   </div>
                 </td>
                 <td className="px-4 py-3">
