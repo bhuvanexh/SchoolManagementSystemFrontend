@@ -14,12 +14,12 @@ export const fetchUnreadCount = createApiThunk(
 
 export const markAsRead = createApiThunk(
   'notifications/markAsRead',
-  (id) => ({ method: 'patch', url: `/notifications/${id}/read` }),
+  (id) => ({ method: 'put', url: `/notifications/${id}/read` }),
   { error: 'Failed to mark notification as read' }
 );
 
 export const markAllAsRead = createApiThunk(
   'notifications/markAllAsRead',
-  { method: 'patch', url: '/notifications/read-all' },
+  { method: 'put', url: '/notifications/read-all' },
   { success: 'All notifications marked as read', error: 'Failed to mark notifications as read' }
 );

@@ -22,6 +22,8 @@ import { buildOptions } from '../../utils/helpers';
 const Teachers = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  const role = useSelector((state) => state.auth.user?.role);
+  const isAdmin = role === 'admin';
   const { list, loading } = useSelector((state) => state.teachers);
   const coreSubjectList = useSelector((state) => state.coreSubjects.list);
   const [search, setSearch] = useState('');
@@ -40,7 +42,18 @@ const Teachers = () => {
   const columns = useMemo(
     () => [
       { header: 'Teacher ID', accessorKey: 'teacherId' },
-      { header: 'Name', accessorKey: 'name' },
+      {
+        header: 'Name',
+        cell: ({ row }) => (
+          <button
+            type="button"
+            onClick={() => navigate(`/teachers/${row.original._id}`)}
+            className="text-left font-semibold text-primary hover:underline"
+          >
+            {row.original.name}
+          </button>
+        ),
+      },
       { header: 'Email', accessorKey: 'email' },
       { header: 'Phone', accessorKey: 'phone' },
       {
@@ -62,13 +75,13 @@ const Teachers = () => {
         cell: ({ row }) => (
           <div className="flex gap-2">
             <Tooltip text="View profile"><button type="button" onClick={() => navigate(`/teachers/${row.original._id}`)} className="rounded-full bg-white p-2 text-primary"><Eye className="h-4 w-4" /></button></Tooltip>
-            <Tooltip text="Edit teacher"><button type="button" onClick={() => navigate(`/teachers/${row.original._id}/edit`)} className="rounded-full bg-white p-2 text-secondary"><Pencil className="h-4 w-4" /></button></Tooltip>
-            <Tooltip text="Remove teacher"><button type="button" onClick={() => setDeleteId(row.original._id)} className="rounded-full bg-white p-2 text-error"><UserX className="h-4 w-4" /></button></Tooltip>
+            {isAdmin ? <Tooltip text="Edit teacher"><button type="button" onClick={() => navigate(`/teachers/${row.original._id}/edit`)} className="rounded-full bg-white p-2 text-secondary"><Pencil className="h-4 w-4" /></button></Tooltip> : null}
+            {isAdmin ? <Tooltip text="Remove teacher"><button type="button" onClick={() => setDeleteId(row.original._id)} className="rounded-full bg-white p-2 text-error"><UserX className="h-4 w-4" /></button></Tooltip> : null}
           </div>
         ),
       },
     ],
-    [navigate]
+    [navigate, isAdmin]
   );
 
   return (
@@ -76,7 +89,7 @@ const Teachers = () => {
       <PageHeader
         title="Teachers"
         description="Manage teacher profiles, subject specializations, and school staffing records."
-        actions={<Link to="/teachers/new"><PrimaryButton><span className="inline-flex items-center gap-2"><UserPlus className="h-4 w-4" /> Add Teacher</span></PrimaryButton></Link>}
+        actions={isAdmin ? <Link to="/teachers/new"><PrimaryButton><span className="inline-flex items-center gap-2"><UserPlus className="h-4 w-4" /> Add Teacher</span></PrimaryButton></Link> : null}
       />
 
       <div className="glass-panel grid gap-4 p-6 md:grid-cols-[1fr_280px]">
@@ -86,7 +99,7 @@ const Teachers = () => {
 
       {loading ? <Loader label="Loading teachers..." /> : null}
       {!loading && !list.length ? (
-        <EmptyState title="No teachers found" message="Create your first teacher profile to begin assignments." actionLabel="Add Teacher" onAction={() => navigate('/teachers/new')} />
+        <EmptyState title="No teachers found" message="Create your first teacher profile to begin assignments." actionLabel={isAdmin ? 'Add Teacher' : undefined} onAction={isAdmin ? () => navigate('/teachers/new') : undefined} />
       ) : null}
       {!loading && list.length ? <DataTable columns={columns} data={list} /> : null}
 

@@ -6,7 +6,13 @@ import { logout } from '../../redux/slices/authSlice';
 import { navConfig } from '../../utils/roleNavConfig';
 
 const isItemActive = (item, location) => {
-  if (location.pathname !== item.path) return false;
+  const itemPath = item.path;
+  const pathname = location.pathname;
+  // Exact match for root '/'
+  if (itemPath === '/') return pathname === '/';
+  // Match the item path or any nested path under it: /teachers, /teachers/123, /teachers/new
+  const matches = pathname === itemPath || pathname.startsWith(`${itemPath}/`);
+  if (!matches) return false;
   const scopeParam = new URLSearchParams(location.search).get('scope');
   const itemScope = item.search ? new URLSearchParams(item.search).get('scope') : null;
   return scopeParam === itemScope;

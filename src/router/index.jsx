@@ -43,19 +43,9 @@ export const router = createBrowserRouter([
         element: <RoleRoute allowed={['admin']} />,
         children: [
           {
-            path: 'teachers',
-            handle: { title: 'Teachers' },
-            element: lazyPage(() => import('../pages/teachers')),
-          },
-          {
             path: 'teachers/new',
             handle: { title: 'Add Teacher' },
             element: lazyPage(() => import('../pages/teachers/TeacherForm')),
-          },
-          {
-            path: 'teachers/:id',
-            handle: { title: 'Teacher Detail' },
-            element: lazyPage(() => import('../pages/teachers/TeacherDetail')),
           },
           {
             path: 'teachers/:id/edit',
@@ -76,6 +66,21 @@ export const router = createBrowserRouter([
             path: 'classes/:id/edit',
             handle: { title: 'Edit Class' },
             element: lazyPage(() => import('../pages/classes/ClassForm')),
+          },
+        ],
+      },
+      {
+        element: <RoleRoute allowed={['admin', 'teacher']} />,
+        children: [
+          {
+            path: 'teachers',
+            handle: { title: 'Teachers' },
+            element: lazyPage(() => import('../pages/teachers')),
+          },
+          {
+            path: 'teachers/:id',
+            handle: { title: 'Teacher Detail' },
+            element: lazyPage(() => import('../pages/teachers/TeacherDetail')),
           },
         ],
       },
@@ -121,11 +126,6 @@ export const router = createBrowserRouter([
             path: 'subjects/:id/edit',
             handle: { title: 'Edit Subject' },
             element: lazyPage(() => import('../pages/subjects/SubjectForm')),
-          },
-          {
-            path: 'attendance',
-            handle: { title: 'Attendance' },
-            element: lazyPage(() => import('../pages/attendance')),
           },
           {
             path: 'tests/new',
@@ -178,6 +178,11 @@ export const router = createBrowserRouter([
             element: lazyPage(() => import('../pages/students/StudentDetail')),
           },
           {
+            path: 'attendance',
+            handle: { title: 'Attendance' },
+            element: lazyPage(() => import('../pages/attendance')),
+          },
+          {
             path: 'syllabus',
             handle: { title: 'Syllabus' },
             element: lazyPage(() => import('../pages/syllabus')),
@@ -188,17 +193,36 @@ export const router = createBrowserRouter([
             element: lazyPage(() => import('../pages/tests')),
           },
           {
+            path: 'tests/:id/view',
+            handle: { title: 'Test Detail' },
+            element: lazyPage(() => import('../pages/tests/TestDetail')),
+          },
+          {
             path: 'notices',
             handle: { title: 'Notices' },
             element: lazyPage(() => import('../pages/notices')),
+          },
+          {
+            path: 'notices/:id',
+            handle: { title: 'Notice Detail' },
+            element: lazyPage(() => import('../pages/notices/NoticeDetail')),
           },
           {
             path: 'events',
             handle: { title: 'Events' },
             element: lazyPage(() => import('../pages/events')),
           },
+          {
+            path: 'events/:id',
+            handle: { title: 'Event Detail' },
+            element: lazyPage(() => import('../pages/events/EventDetail')),
+          },
         ],
       },
     ],
+  },
+  {
+    path: '*',
+    element: lazyPage(() => import('../pages/NotFound')),
   },
 ]);

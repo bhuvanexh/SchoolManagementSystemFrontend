@@ -33,7 +33,10 @@ const usePermission = () => {
     const canManageNotice = (entity) => isAdmin || isCreator(entity);
     const canManageStudentsIn = (sectionId) => isAdmin || isClassTeacherOf(sectionId);
     const canManageSubjectsIn = (sectionId) => isAdmin || isClassTeacherOf(sectionId);
+    // Class teachers can manage students/subjects in their sections.
     const canCreateScopedContent = isAdmin || classTeacherSectionIds.size > 0 || classTeacherClassIds.size > 0;
+    // Notices/events: any teacher (class teacher OR subject teacher) can target their teaching scope.
+    const canCreateNoticeOrEvent = isAdmin || classTeacherSectionIds.size > 0 || classTeacherClassIds.size > 0 || subjectTeacherSubjectIds.size > 0;
 
     return {
       isAdmin,
@@ -47,6 +50,7 @@ const usePermission = () => {
       canManageStudentsIn,
       canManageSubjectsIn,
       canCreateScopedContent,
+      canCreateNoticeOrEvent,
     };
   }, [isAdmin, isTeacher, profile, role, user?._id]);
 

@@ -37,22 +37,28 @@ const Classes = () => {
 
   const myAssignments = useMemo(() => {
     if (!isMyScope) return null;
-    return [
-      ...(profile?.classTeacherSections || []).map((s) => ({
-        id: s.sectionId,
-        label: `Class ${s.className} — Section ${s.sectionName}`,
-        sectionId: s.sectionId,
-        classId: s.classId,
-        type: 'Section Teacher',
-      })),
-      ...(profile?.classTeacherClasses || []).map((c) => ({
-        id: c.classId,
-        label: `Class ${c.className}`,
-        sectionId: null,
-        classId: c.classId,
-        type: 'Class Teacher',
-      })),
-    ];
+    const classLevelIds = new Set((profile?.classTeacherClasses || []).map((c) => String(c.classId)));
+    const sectionEntries = (profile?.classTeacherSections || [])
+      // dedupe: skip section assignments for a class that we already show at class-level
+      .filter((s) => !classLevelIds.has(String(s.classId)))
+      .map((s) => {
+        const isDefault = s.sectionName === 'Default';
+        return {
+          id: s.sectionId,
+          label: isDefault ? `Class ${s.className}` : `Class ${s.className}-${s.sectionName}`,
+          sectionId: isDefault ? null : s.sectionId,
+          classId: s.classId,
+          type: 'Class Teacher',
+        };
+      });
+    const classEntries = (profile?.classTeacherClasses || []).map((c) => ({
+      id: c.classId,
+      label: `Class ${c.className}`,
+      sectionId: null,
+      classId: c.classId,
+      type: 'Class Teacher',
+    }));
+    return [...classEntries, ...sectionEntries];
   }, [isMyScope, profile]);
 
   const handleViewSections = (cls) => {

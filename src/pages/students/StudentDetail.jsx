@@ -10,6 +10,7 @@ import PageWrapper from '../../components/layout/PageWrapper';
 import { fetchStudentAttendance } from '../../redux/actions/attendanceActions';
 import { fetchResultsByStudent } from '../../redux/actions/resultActions';
 import { fetchStudentById, fetchStudentSummary } from '../../redux/actions/studentActions';
+import { clearCurrentStudent } from '../../redux/slices/studentSlice';
 import ResultView from '../tests/components/ResultView';
 import { formatDate } from '../../utils/formatters';
 import PrimaryButton from '../../components/buttons/PrimaryButton';
@@ -35,9 +36,15 @@ const StudentDetail = () => {
 
   useEffect(() => {
     if (studentId) {
+      // Reset any prior student data so it doesn't flash while loading
+      dispatch(clearCurrentStudent());
       dispatch(fetchStudentById(studentId));
       dispatch(fetchStudentSummary(studentId));
+      setTabsLoaded({ attendance: false, results: false });
     }
+    return () => {
+      dispatch(clearCurrentStudent());
+    };
   }, [dispatch, studentId]);
 
   // Lazy-load attendance and results when tab is first visited
@@ -61,6 +68,8 @@ const StudentDetail = () => {
   return (
     <PageWrapper>
       <PageHeader
+        backTo="/students"
+        backLabel="Back to Students"
         title={current?.name || 'Student Detail'}
         description="Attendance, academic performance, and syllabus visibility in one place."
         actions={role !== 'student' && studentId ? <Link to={`/students/${studentId}/edit`}><PrimaryButton>Edit Student</PrimaryButton></Link> : null}
@@ -69,8 +78,15 @@ const StudentDetail = () => {
       <section className="glass-panel p-6">
         <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
           <div><p className="text-xs font-bold uppercase tracking-widest text-on-surface-variant">Roll No</p><p className="mt-2 font-semibold text-on-surface">{current?.rollNumber || '—'}</p></div>
-          <div><p className="text-xs font-bold uppercase tracking-widest text-on-surface-variant">Class</p><p className="mt-2 font-semibold text-on-surface">{current?.sectionId?.classId?.name || '—'}</p></div>
-          <div><p className="text-xs font-bold uppercase tracking-widest text-on-surface-variant">Section</p><p className="mt-2 font-semibold text-on-surface">{current?.sectionId?.name || '—'}</p></div>
+          <div>
+            <p className="text-xs font-bold uppercase tracking-widest text-on-surface-variant">Class</p>
+            {current?.sectionId?.classId?._id ? (
+              <Link to={`/classes/${current.sectionId.classId._id}`} className="mt-2 inline-block font-semibold text-primary hover:underline">
+                {current.sectionId.classId.name}
+                {current.sectionId.name && current.sectionId.name !== 'Default' ? `-${current.sectionId.name}` : ''}
+              </Link>
+            ) : <p className="mt-2 font-semibold text-on-surface">—</p>}
+          </div>
           <div><p className="text-xs font-bold uppercase tracking-widest text-on-surface-variant">Parent</p><p className="mt-2 font-semibold text-on-surface">{current?.parentName || '—'}</p></div>
           <div><p className="text-xs font-bold uppercase tracking-widest text-on-surface-variant">Contact</p><p className="mt-2 font-semibold text-on-surface">{current?.parentContact || '—'}</p></div>
           <div><p className="text-xs font-bold uppercase tracking-widest text-on-surface-variant">Attendance</p><p className="mt-2 font-semibold text-on-surface">{summary?.attendancePercentage ?? '—'}%</p></div>

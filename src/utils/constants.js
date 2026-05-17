@@ -12,6 +12,7 @@ export const ATTENDANCE_STATUSES = [
 
 export const NOTICE_VISIBILITY = [
   { label: 'School-wide', value: 'school' },
+  { label: 'Teachers only', value: 'teachers' },
   { label: 'Class', value: 'class' },
   { label: 'Section', value: 'section' },
 ];

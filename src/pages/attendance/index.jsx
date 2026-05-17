@@ -28,8 +28,9 @@ const Attendance = () => {
   const records = useSelector((state) => state.attendance.records);
   const studentHistory = useSelector((state) => state.attendance.studentHistory);
   const loading = useSelector((state) => state.attendance.loading);
-  const [mode, setMode] = useState('mark');
+  const [mode, setMode] = useState(role === 'student' ? 'report' : 'mark');
   const [values, setValues] = useState({});
+  const [initialValues, setInitialValues] = useState({});
   const [params, setParams] = useFilterParams();
 
   const date = params.date || today;
@@ -91,17 +92,37 @@ const Attendance = () => {
 
   // Seed mark-attendance toggles from saved records.
   // r.studentId is a populated object from the API, so compare by _id.
+  // Also snapshot these as initialValues so we can compute the delta later.
   useEffect(() => {
     const next = {};
+    const initial = {};
     students.forEach((student) => {
       const record = records.find((r) => {
         const id = r.studentId?._id || r.studentId;
         return id?.toString() === student._id?.toString();
       });
-      next[student._id] = record?.status || 'present';
+      const status = record?.status || 'present';
+      next[student._id] = status;
+      // Initial value is only set if there's a saved record; otherwise it's "unsaved"
+      initial[student._id] = record?.status || null;
     });
     setValues(next);
+    setInitialValues(initial);
   }, [records, students]);
+
+  // Compute which student rows have changed vs. saved records (or are newly being saved)
+  const changedRecords = useMemo(() => {
+    return students
+      .filter((s) => {
+        const current = values[s._id] || 'present';
+        const saved = initialValues[s._id];
+        // Changed if no saved record exists OR the value differs from saved
+        return saved === null || saved === undefined || saved !== current;
+      })
+      .map((s) => ({ studentId: s._id, status: values[s._id] || 'present' }));
+  }, [students, values, initialValues]);
+
+  const hasChanges = changedRecords.length > 0;
 
   // Set of studentIds that have a saved record for the selected date
   const savedStudentIds = useMemo(
@@ -139,10 +160,12 @@ const Attendance = () => {
     <PageWrapper>
       <PageHeader title="Attendance" description="Mark daily attendance and review attendance summaries by section or student." />
 
-      <div className="flex flex-wrap gap-3">
-        <button type="button" onClick={() => setMode('mark')} className={mode === 'mark' ? 'btn-primary' : 'btn-secondary'}>Mark Attendance</button>
-        <button type="button" onClick={() => setMode('report')} className={mode === 'report' ? 'btn-primary' : 'btn-secondary'}>View Report</button>
-      </div>
+      {role !== 'student' ? (
+        <div className="flex flex-wrap gap-3">
+          <button type="button" onClick={() => setMode('mark')} className={mode === 'mark' ? 'btn-primary' : 'btn-secondary'}>Mark Attendance</button>
+          <button type="button" onClick={() => setMode('report')} className={mode === 'report' ? 'btn-primary' : 'btn-secondary'}>View Report</button>
+        </div>
+      ) : null}
 
       {role !== 'student' ? (
         <ClassSectionFilter
@@ -181,24 +204,24 @@ const Attendance = () => {
               savedStudentIds={savedStudentIds}
               onChange={(studentId, status) => setValues((cur) => ({ ...cur, [studentId]: status }))}
             />
-            <div className="flex justify-end">
+            <div className="flex items-center justify-end gap-3">
+              {!hasChanges && allMarked ? (
+                <p className="text-xs text-on-surface-variant">No changes to save.</p>
+              ) : null}
               <PrimaryButton
                 type="button"
-                disabled={loading || !effectiveSectionId}
+                disabled={loading || !effectiveSectionId || !hasChanges}
                 onClick={() =>
                   dispatch(
                     markAttendance({
                       sectionId: effectiveSectionId,
                       date,
-                      records: students.map((student) => ({
-                        studentId: student._id,
-                        status: values[student._id] || 'present',
-                      })),
+                      records: changedRecords,
                     })
                   )
                 }
               >
-                {loading ? 'Saving...' : 'Save Attendance'}
+                {loading ? 'Saving...' : `Save Attendance${hasChanges ? ` (${changedRecords.length})` : ''}`}
               </PrimaryButton>
             </div>
           </>

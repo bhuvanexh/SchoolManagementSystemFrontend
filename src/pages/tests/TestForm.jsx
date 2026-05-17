@@ -20,6 +20,23 @@ import { createTest, fetchTestById, updateTest } from '../../redux/actions/testA
 import { buildOptions } from '../../utils/helpers';
 import { testSchema } from '../../validation/testSchema';
 
+// Build a teacher's subject-teacher assignment list as combined class-section options
+const buildSubjectTeacherClassOptions = (profile) => {
+  const seen = new Map(); // key: classId-sectionId, value: { label, classId, sectionId }
+  (profile?.subjectTeacherAssignments || []).forEach((s) => {
+    const key = `${s.classId || ''}::${s.sectionId || ''}`;
+    if (seen.has(key)) return;
+    const isDefaultSection = s.sectionName === 'Default';
+    seen.set(key, {
+      classId: s.classId,
+      sectionId: isDefaultSection ? null : s.sectionId,
+      label: !s.sectionName || isDefaultSection ? `Class ${s.className}` : `Class ${s.className}-${s.sectionName}`,
+      value: `${s.classId}::${s.sectionId || ''}`,
+    });
+  });
+  return Array.from(seen.values());
+};
+
 const TestForm = () => {
   const { id } = useParams();
   const isEdit = Boolean(id);
@@ -30,8 +47,11 @@ const TestForm = () => {
   const subjects = useSelector((state) => state.subjects.list);
   const current = useSelector((state) => state.tests.current);
   const loading = useSelector((state) => state.tests.loading);
+  const role = useSelector((state) => state.auth.user?.role);
+  const profile = useSelector((state) => state.auth.profile);
 
   const isResettingRef = useRef(false);
+  const isTeacher = role === 'teacher';
 
   const { control, handleSubmit, reset, watch, setValue, formState: { errors, isValid } } = useForm({
     resolver: yupResolver(testSchema),
@@ -48,17 +68,20 @@ const TestForm = () => {
   );
   const classHasSections = selectedClass?.hasSections === true;
 
+  const teacherOptions = useMemo(() => buildSubjectTeacherClassOptions(profile), [profile]);
+
   useEffect(() => {
     dispatch(fetchClasses());
     if (isEdit) dispatch(fetchTestById(id));
   }, [dispatch, id, isEdit]);
 
-  // Fetch sections only when the class has sections
+  // Fetch sections only for admin — the teacher's combined dropdown already carries the sectionId
   useEffect(() => {
+    if (isTeacher) return;
     if (classId && classHasSections) {
       dispatch(fetchSectionsByClass(classId));
     }
-  }, [classId, classHasSections, dispatch]);
+  }, [classId, classHasSections, dispatch, isTeacher]);
 
   // When class changes (user interaction), cascade-clear section + subject
   useEffect(() => {
@@ -76,14 +99,16 @@ const TestForm = () => {
     setValue('subjectId', '');
   }, [sectionId]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Fetch subjects: by sectionId when class has sections, by classId when it doesn't
+  // Fetch subjects: by sectionId when class has sections, by classId when it doesn't.
+  // For teachers, narrow to subjects they teach so the dropdown only shows their own subjects.
   useEffect(() => {
+    const filters = { scope: isTeacher ? 'my' : undefined };
     if (classHasSections && sectionId) {
-      dispatch(fetchSubjects({ sectionId }));
+      dispatch(fetchSubjects({ ...filters, sectionId }));
     } else if (!classHasSections && classId) {
-      dispatch(fetchSubjects({ classId }));
+      dispatch(fetchSubjects({ ...filters, classId }));
     }
-  }, [dispatch, classId, sectionId, classHasSections]);
+  }, [dispatch, classId, sectionId, classHasSections, isTeacher]);
 
   useEffect(() => {
     if (isEdit && current?._id === id) {
@@ -108,7 +133,7 @@ const TestForm = () => {
     const payload = {
       ...values,
       date: values.testDate,
-      sectionId: classHasSections ? values.sectionId : null,
+      sectionId: classHasSections ? values.sectionId : (values.sectionId || null),
     };
     const result = isEdit ? await dispatch(updateTest({ id, ...payload })) : await dispatch(createTest(payload));
     if (!result.error) navigate('/tests');
@@ -116,15 +141,57 @@ const TestForm = () => {
 
   if (isEdit && loading && !current) return <Loader label="Loading test..." />;
 
+  // Teacher combined dropdown value (matches an option)
+  const teacherDropdownValue = useMemo(() => {
+    if (!isTeacher) return '';
+    return `${classId || ''}::${sectionId || ''}`;
+  }, [isTeacher, classId, sectionId]);
+
+  const onTeacherClassPick = (val) => {
+    const opt = teacherOptions.find((o) => o.value === val);
+    if (!opt) return;
+    // Block the class/section cascade effects from racing and wiping the values we just set.
+    isResettingRef.current = true;
+    setValue('classId', opt.classId, { shouldValidate: true });
+    setValue('sectionId', opt.sectionId || '', { shouldValidate: true });
+    setValue('subjectId', '', { shouldValidate: true });
+    dispatch(clearSubjects());
+    setTimeout(() => { isResettingRef.current = false; }, 0);
+  };
+
   return (
     <PageWrapper>
-      <PageHeader title={isEdit ? 'Edit Test' : 'Create Test'} description="Create an assessment tied to a section-specific subject." />
+      <PageHeader
+        backTo="/tests"
+        backLabel="Back to Tests"
+        title={isEdit ? 'Edit Test' : 'Create Test'}
+        description="Create an assessment tied to a section-specific subject."
+      />
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
         <FormSection title="Test Details">
-          <FormField control={control} name="classId" label="Class" type="select" options={buildOptions(classes)} error={errors.classId} />
-          {classHasSections ? (
-            <FormField control={control} name="sectionId" label="Section" type="select" options={buildOptions(sections)} error={errors.sectionId} />
-          ) : null}
+          {isTeacher && !isEdit ? (
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-bold uppercase tracking-widest text-on-surface-variant">Class</label>
+              <select
+                className="input-field"
+                value={teacherDropdownValue}
+                onChange={(e) => onTeacherClassPick(e.target.value)}
+              >
+                <option value="::">Select class</option>
+                {teacherOptions.map((o) => (
+                  <option key={o.value} value={o.value}>{o.label}</option>
+                ))}
+              </select>
+              {errors.classId ? <span className="text-xs font-medium text-error">{errors.classId.message}</span> : null}
+            </div>
+          ) : (
+            <>
+              <FormField control={control} name="classId" label="Class" type="select" options={buildOptions(classes)} error={errors.classId} />
+              {classHasSections ? (
+                <FormField control={control} name="sectionId" label="Section" type="select" options={buildOptions(sections)} error={errors.sectionId} />
+              ) : null}
+            </>
+          )}
           <FormField control={control} name="name" label="Test Name" error={errors.name} />
           <FormField
             control={control}

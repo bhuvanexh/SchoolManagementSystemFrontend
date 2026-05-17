@@ -32,6 +32,7 @@ const Syllabus = () => {
   const dispatch = useDispatch();
   const [params, setParams] = useFilterParams();
   const role = useSelector((state) => state.auth.user?.role);
+  const profile = useSelector((state) => state.auth.profile);
   const classes = useSelector((state) => state.classes.list);
   const sections = useSelector((state) => state.sections.list);
   const subjects = useSelector((state) => state.subjects.list);
@@ -41,32 +42,44 @@ const Syllabus = () => {
   const [modal, setModal] = useState({ open: false, item: null });
   const [deleteItem, setDeleteItem] = useState(null);
 
+  const isStudent = role === 'student';
+
   const selectedClass = useMemo(
     () => (params.classId ? classes.find((c) => c._id === params.classId) ?? null : null),
     [classes, params.classId]
   );
   const classHasSections = selectedClass?.hasSections === true;
 
+  // Mount: load reference data and clear stale items
   useEffect(() => {
-    dispatch(fetchClasses());
+    if (!isStudent) dispatch(fetchClasses());
     dispatch(clearItems());
-  }, [dispatch]);
+  }, [dispatch, isStudent]);
 
   useEffect(() => () => { dispatch(clearItems()); }, [dispatch]);
 
+  // Students: auto-fetch subjects for their section on mount
   useEffect(() => {
+    if (isStudent) {
+      dispatch(fetchSubjects({}));
+    }
+  }, [isStudent, dispatch]);
+
+  useEffect(() => {
+    if (isStudent) return;
     if (params.classId && classHasSections) {
       dispatch(fetchSectionsByClass(params.classId));
     }
-  }, [dispatch, params.classId, classHasSections]);
+  }, [dispatch, params.classId, classHasSections, isStudent]);
 
   useEffect(() => {
+    if (isStudent) return;
     if (classHasSections && params.sectionId) {
       dispatch(fetchSubjects({ sectionId: params.sectionId }));
     } else if (!classHasSections && params.classId) {
       dispatch(fetchSubjects({ classId: params.classId }));
     }
-  }, [dispatch, classHasSections, params.classId, params.sectionId]);
+  }, [dispatch, classHasSections, params.classId, params.sectionId, isStudent]);
 
   useEffect(() => {
     if (params.subjectId) {
@@ -77,7 +90,7 @@ const Syllabus = () => {
   }, [dispatch, params.subjectId]);
 
   const progress = useMemo(() => calculateProgress(items), [items]);
-  const readOnly = role === 'student' || (role === 'teacher' && !isAdmin && !isSubjectTeacherOf(params.subjectId));
+  const readOnly = isStudent || (role === 'teacher' && !isAdmin && !isSubjectTeacherOf(params.subjectId));
 
   const filterCols = classHasSections ? 'lg:grid-cols-3' : 'lg:grid-cols-2';
 
@@ -85,7 +98,11 @@ const Syllabus = () => {
     <PageWrapper>
       <PageHeader
         title="Syllabus"
-        description="Follow chapter progress per subject and keep section-level learning plans visible."
+        description={
+          isStudent
+            ? 'Pick a subject to view your class syllabus and topic progress.'
+            : 'Follow chapter progress per subject and keep section-level learning plans visible.'
+        }
         actions={!readOnly && params.subjectId ? (
           <PrimaryButton type="button" onClick={() => setModal({ open: true, item: null })}>
             <span className="inline-flex items-center gap-2"><PlusCircle className="h-4 w-4" /> Add Item</span>
@@ -93,36 +110,48 @@ const Syllabus = () => {
         ) : null}
       />
 
-      <div className={`glass-panel grid gap-4 p-6 ${filterCols}`}>
-        <SelectInput
-          label="Class"
-          value={params.classId}
-          onChange={(value) => {
-            dispatch(clearSections());
-            setParams({ classId: value, sectionId: '', subjectId: '' });
-          }}
-          options={buildOptions(classes)}
-          placeholder="Choose class"
-        />
-        {classHasSections ? (
+      {isStudent ? (
+        <div className="glass-panel grid gap-4 p-6">
           <SelectInput
-            label="Section"
-            value={params.sectionId}
-            onChange={(value) => setParams({ sectionId: value, subjectId: '' })}
-            options={buildOptions(sections)}
-            placeholder="Choose section"
-            disabled={!params.classId}
+            label="Subject"
+            value={params.subjectId}
+            onChange={(value) => setParams({ subjectId: value })}
+            options={buildOptions(subjects)}
+            placeholder="Choose subject"
           />
-        ) : null}
-        <SelectInput
-          label="Subject"
-          value={params.subjectId}
-          onChange={(value) => setParams({ subjectId: value })}
-          options={buildOptions(subjects)}
-          placeholder="Choose subject"
-          disabled={classHasSections ? !params.sectionId : !params.classId}
-        />
-      </div>
+        </div>
+      ) : (
+        <div className={`glass-panel grid gap-4 p-6 ${filterCols}`}>
+          <SelectInput
+            label="Class"
+            value={params.classId}
+            onChange={(value) => {
+              dispatch(clearSections());
+              setParams({ classId: value, sectionId: '', subjectId: '' });
+            }}
+            options={buildOptions(classes)}
+            placeholder="Choose class"
+          />
+          {classHasSections ? (
+            <SelectInput
+              label="Section"
+              value={params.sectionId}
+              onChange={(value) => setParams({ sectionId: value, subjectId: '' })}
+              options={buildOptions(sections)}
+              placeholder="Choose section"
+              disabled={!params.classId}
+            />
+          ) : null}
+          <SelectInput
+            label="Subject"
+            value={params.subjectId}
+            onChange={(value) => setParams({ subjectId: value })}
+            options={buildOptions(subjects)}
+            placeholder="Choose subject"
+            disabled={classHasSections ? !params.sectionId : !params.classId}
+          />
+        </div>
+      )}
 
       {params.subjectId ? (
         <section className="glass-panel p-6">
@@ -141,7 +170,10 @@ const Syllabus = () => {
       {loading && !items.length ? <Loader label="Loading syllabus..." /> : null}
 
       {!params.subjectId ? (
-        <EmptyState title="No subject selected" message="Choose a class and subject above to view the syllabus." />
+        <EmptyState
+          title="No subject selected"
+          message={isStudent ? 'Choose a subject above to view its syllabus.' : 'Choose a class and subject above to view the syllabus.'}
+        />
       ) : !loading && !items.length ? (
         <EmptyState title="No syllabus items" message={readOnly ? 'No topics have been added yet.' : 'Add the first topic using the button above.'} />
       ) : (

@@ -14,6 +14,7 @@ const slice = createEntitySlice({
   initialState: { list: [], current: null, summary: null, loading: false, error: null },
   reducers: {
     clearStudents: (state) => { state.list = []; },
+    clearCurrentStudent: (state) => { state.current = null; state.summary = null; },
   },
   thunkMap: {
     fetchStudents: {
@@ -63,5 +64,5 @@ const slice = createEntitySlice({
   },
 });
 
-export const { clearStudents } = slice.actions;
+export const { clearStudents, clearCurrentStudent } = slice.actions;
 export default slice.reducer;

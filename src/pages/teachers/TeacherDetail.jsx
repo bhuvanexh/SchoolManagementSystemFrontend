@@ -6,10 +6,12 @@ import { Link, useParams } from 'react-router-dom';
 import PrimaryButton from '../../components/buttons/PrimaryButton';
 import Badge from '../../components/data-display/Badge';
 import ConfirmDialog from '../../components/feedback/ConfirmDialog';
+import EmptyState from '../../components/feedback/EmptyState';
 import Loader from '../../components/feedback/Loader';
 import PageHeader from '../../components/layout/PageHeader';
 import PageWrapper from '../../components/layout/PageWrapper';
 import { deactivateTeacher, fetchTeacherById } from '../../redux/actions/teacherActions';
+import { clearCurrentTeacher } from '../../redux/slices/teacherSlice';
 
 const Field = ({ label, value }) => (
   <div>
@@ -26,7 +28,11 @@ const TeacherDetail = () => {
   const [confirmOpen, setConfirmOpen] = useState(false);
 
   useEffect(() => {
+    dispatch(clearCurrentTeacher());
     dispatch(fetchTeacherById(id));
+    return () => {
+      dispatch(clearCurrentTeacher());
+    };
   }, [dispatch, id]);
 
   if (loading && !current) return <Loader label="Loading teacher details..." />;
@@ -34,10 +40,13 @@ const TeacherDetail = () => {
   const classTeacherOf = current?.assignments?.classTeacherOf || [];
   const sectionTeacherOf = current?.assignments?.sectionTeacherOf || [];
   const subjectTeacherOf = current?.assignments?.subjectTeacherOf || [];
+  const hasAnyClassAssignment = classTeacherOf.length > 0 || sectionTeacherOf.length > 0;
 
   return (
     <PageWrapper>
       <PageHeader
+        backTo="/teachers"
+        backLabel="Back to Teachers"
         title={current?.name || 'Teacher Detail'}
         description="Full profile, assignment visibility, and responsibilities."
         actions={role === 'admin' ? (
@@ -50,7 +59,6 @@ const TeacherDetail = () => {
         ) : null}
       />
 
-      {/* Profile Info */}
       <section className="glass-panel p-6">
         <h2 className="mb-5 text-lg font-bold text-on-surface">Profile</h2>
         <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
@@ -80,45 +88,46 @@ const TeacherDetail = () => {
         </div>
       </section>
 
-      {/* Assignments */}
       <div className="grid gap-6 xl:grid-cols-2">
         <section className="glass-panel p-6">
           <h2 className="text-xl font-bold text-on-surface">Class Teacher Of</h2>
-          <div className="mt-4 space-y-3">
-            {/* Classes without sections */}
-            {classTeacherOf.map((cls) => (
-              <div key={cls._id} className="rounded-glass-sm bg-white/50 p-4">
-                <p className="font-semibold text-on-surface">Class {cls.name}</p>
-                {cls.academicYear ? <p className="mt-1 text-sm text-on-surface-variant">Academic Year {cls.academicYear}</p> : null}
-              </div>
-            ))}
-            {/* Sections */}
-            {sectionTeacherOf.map((sec) => (
-              <div key={sec._id} className="rounded-glass-sm bg-white/50 p-4">
-                <p className="font-semibold text-on-surface">Class {sec.classId?.name} — Section {sec.name}</p>
-              </div>
-            ))}
-            {!classTeacherOf.length && !sectionTeacherOf.length && (
-              <p className="text-sm text-on-surface-variant">Not assigned as class teacher yet.</p>
-            )}
-          </div>
+          {!hasAnyClassAssignment ? (
+            <p className="mt-4 text-sm text-on-surface-variant">Not assigned as class teacher yet.</p>
+          ) : (
+            <div className="mt-4 space-y-3">
+              {classTeacherOf.map((cls) => (
+                <Link key={cls._id} to={`/classes/${cls._id}`} className="block rounded-glass-sm bg-white/50 p-4 transition hover:bg-white/70">
+                  <p className="font-semibold text-on-surface">Class {cls.name}</p>
+                  {cls.academicYear ? <p className="mt-1 text-sm text-on-surface-variant">Academic Year {cls.academicYear}</p> : null}
+                </Link>
+              ))}
+              {sectionTeacherOf.map((sec) => (
+                <Link key={sec._id} to={`/classes/${sec.classId?._id || ''}`} className="block rounded-glass-sm bg-white/50 p-4 transition hover:bg-white/70">
+                  <p className="font-semibold text-on-surface">
+                    Class {sec.classId?.name}{sec.name && sec.name !== 'Default' ? `-${sec.name}` : ''}
+                  </p>
+                </Link>
+              ))}
+            </div>
+          )}
         </section>
 
         <section className="glass-panel p-6">
           <h2 className="text-xl font-bold text-on-surface">Subject Teacher Of</h2>
-          <div className="mt-4 space-y-3">
-            {subjectTeacherOf.map((sub) => (
-              <div key={sub._id} className="rounded-glass-sm bg-white/50 p-4">
-                <p className="font-semibold text-on-surface">{sub.name}</p>
-                <p className="mt-1 text-sm text-on-surface-variant">
-                  Class {sub.classId?.name}{sub.sectionId?.name ? ` — Section ${sub.sectionId.name}` : ''}
-                </p>
-              </div>
-            ))}
-            {!subjectTeacherOf.length && (
-              <p className="text-sm text-on-surface-variant">Not assigned as subject teacher yet.</p>
-            )}
-          </div>
+          {subjectTeacherOf.length === 0 ? (
+            <p className="mt-4 text-sm text-on-surface-variant">Not assigned as subject teacher yet.</p>
+          ) : (
+            <div className="mt-4 space-y-3">
+              {subjectTeacherOf.map((sub) => (
+                <Link key={sub._id} to={`/classes/${sub.classId?._id || ''}`} className="block rounded-glass-sm bg-white/50 p-4 transition hover:bg-white/70">
+                  <p className="font-semibold text-on-surface">{sub.name}</p>
+                  <p className="mt-1 text-sm text-on-surface-variant">
+                    Class {sub.classId?.name}{sub.sectionId?.name && sub.sectionId.name !== 'Default' ? `-${sub.sectionId.name}` : ''}
+                  </p>
+                </Link>
+              ))}
+            </div>
+          )}
         </section>
       </div>
 

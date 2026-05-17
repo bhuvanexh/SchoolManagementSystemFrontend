@@ -38,6 +38,8 @@ const Tests = () => {
   const { isAdmin, isSubjectTeacherOf } = usePermission();
   const [confirm, setConfirm] = useState({ type: null, id: null });
 
+  const isStudent = role === 'student';
+
   const selectedClass = useMemo(
     () => (params.classId ? classes.find((c) => c._id === params.classId) ?? null : null),
     [classes, params.classId]
@@ -45,22 +47,24 @@ const Tests = () => {
   const classHasSections = selectedClass?.hasSections === true;
 
   useEffect(() => {
-    dispatch(fetchClasses());
-    // On unmount: clear list/sections/subjects so navigating back gives a clean slate
+    // Students can't fetch the full classes list — backend auto-scopes their tests.
+    if (!isStudent) dispatch(fetchClasses());
     return () => {
       dispatch(clearTests());
       dispatch(clearSections());
       dispatch(clearSubjects());
     };
-  }, [dispatch]);
+  }, [dispatch, isStudent]);
 
   useEffect(() => {
+    if (isStudent) return;
     if (params.classId && classHasSections) {
       dispatch(fetchSectionsByClass(params.classId));
     }
-  }, [dispatch, params.classId, classHasSections]);
+  }, [dispatch, params.classId, classHasSections, isStudent]);
 
   useEffect(() => {
+    if (isStudent) return;
     if (classHasSections && params.sectionId) {
       dispatch(fetchSubjects({ sectionId: params.sectionId }));
     } else if (!classHasSections && params.classId) {
@@ -68,9 +72,10 @@ const Tests = () => {
     } else {
       dispatch(clearSubjects());
     }
-  }, [dispatch, classHasSections, params.classId, params.sectionId]);
+  }, [dispatch, classHasSections, params.classId, params.sectionId, isStudent]);
 
-  // Fetch tests always — with any filters that are present
+  // Fetch tests always — with any filters that are present.
+  // For students, backend automatically scopes to their section + published tests only.
   useEffect(() => {
     dispatch(fetchTests({
       classId: params.classId || undefined,
@@ -81,16 +86,45 @@ const Tests = () => {
 
   const columns = useMemo(
     () => [
-      { header: 'Test Name', accessorKey: 'name' },
+      {
+        header: 'Test Name',
+        cell: ({ row }) => {
+          const subjectId = row.original.subjectId?._id || row.original.subjectId;
+          const canManage = role !== 'student' && (isAdmin || isSubjectTeacherOf(subjectId));
+          if (role === 'student') {
+            return (
+              <button
+                type="button"
+                onClick={() => navigate(`/tests/${row.original._id}/view`)}
+                className="text-left font-semibold text-primary hover:underline"
+              >
+                {row.original.name}
+              </button>
+            );
+          }
+          return canManage ? (
+            <button
+              type="button"
+              onClick={() => navigate(`/tests/${row.original._id}/grade`)}
+              className="text-left font-semibold text-primary hover:underline"
+            >
+              {row.original.name}
+            </button>
+          ) : <span>{row.original.name}</span>;
+        },
+      },
       { header: 'Subject', cell: ({ row }) => row.original.subjectId?.name || '—' },
       {
         header: 'Class',
         cell: ({ row }) => {
           const className = row.original.classId?.name;
           const sectionName = row.original.sectionId?.name;
+          const classId = row.original.classId?._id;
           if (!className) return '—';
-          if (!sectionName || sectionName === 'Default') return className;
-          return `${className}-${sectionName}`;
+          const label = !sectionName || sectionName === 'Default' ? className : `${className}-${sectionName}`;
+          return classId
+            ? <button type="button" onClick={() => navigate(`/classes/${classId}`)} className="font-semibold text-primary hover:underline">{label}</button>
+            : label;
         },
       },
       { header: 'Date', cell: ({ row }) => formatDate(row.original.date || row.original.testDate) },
@@ -104,6 +138,9 @@ const Tests = () => {
           const canManage = role !== 'student' && (isAdmin || isSubjectTeacherOf(subjectId));
           return (
             <div className="flex gap-2">
+              {role === 'student' ? (
+                <Tooltip text="View details"><button type="button" onClick={() => navigate(`/tests/${row.original._id}/view`)} className="rounded-full bg-white p-2 text-primary"><Eye className="h-4 w-4" /></button></Tooltip>
+              ) : null}
               {canManage && isPublished ? (
                 <Tooltip text="View results"><button type="button" onClick={() => navigate(`/tests/${row.original._id}/grade`)} className="rounded-full bg-white p-2 text-primary"><Eye className="h-4 w-4" /></button></Tooltip>
               ) : null}
@@ -139,6 +176,7 @@ const Tests = () => {
           : null}
       />
 
+      {isStudent ? null : (
       <div className={`glass-panel grid gap-4 p-6 ${filterCols}`}>
         <SelectInput
           label="Class"
@@ -173,6 +211,7 @@ const Tests = () => {
           disabled={classHasSections ? !params.sectionId : !params.classId}
         />
       </div>
+      )}
 
       {loading ? <Loader label="Loading tests..." /> : null}
       {!loading && !list.length ? <EmptyState title="No tests found" message="Assessments created for subjects will appear here." /> : null}
